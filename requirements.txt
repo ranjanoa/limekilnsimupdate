@@ -1,0 +1,16 @@
+# ==============================================================================
+# Kiln 3 Dynamic Simulator & Optimization Testbed Requirements
+# ==============================================================================
+
+# Core OPC UA Communication Server and Client Bridge
+asyncua>=2.0.0
+
+# Cryptography & Security for OPC UA Endpoints
+cryptography>=41.0.0
+
+# Numerical & Data Analysis (Optional / Recommended for Test Runners & Results)
+numpy>=1.24.0
+pandas>=2.0.0
+
+# HTTP & REST Client Utilities for API Testing
+requests>=2.31.0

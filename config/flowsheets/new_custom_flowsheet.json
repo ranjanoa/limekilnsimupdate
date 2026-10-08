@@ -1,0 +1,101 @@
+{
+  "flowsheet_id": "new_custom_flowsheet",
+  "name": "New Custom Flowsheet",
+  "version": "2.0",
+  "description": "",
+  "components": [
+    {
+      "id": "FEEDER_01",
+      "name": "Gravimetric Feeder 1",
+      "type": "GravimetricFeeder",
+      "category": "Feeding",
+      "position": {
+        "x": 280,
+        "y": 400
+      },
+      "parameters": {
+        "nominal_rate_tph": 280,
+        "time_constant_s": 1.5,
+        "temperature_c": 60,
+        "moisture_pct": 0.8,
+        "caco3_pct": 76.85,
+        "mgco3_pct": 2.15,
+        "sio2_pct": 13.5,
+        "al2o3_pct": 3.45,
+        "fe2o3_pct": 2.1
+      },
+      "state": {},
+      "ports": {
+        "in_material": {
+          "name": "in_material",
+          "direction": "IN",
+          "phase": "SOLID",
+          "description": "Optional upstream silo feed",
+          "required": false,
+          "connected_stream_id": null
+        },
+        "out_solid": {
+          "name": "out_solid",
+          "direction": "OUT",
+          "phase": "SOLID",
+          "description": "Controlled raw meal flow",
+          "required": true,
+          "connected_stream_id": 1
+        }
+      }
+    },
+    {
+      "id": "SILO_01",
+      "name": "Silo Storage 1",
+      "type": "SiloStorage",
+      "category": "Feeding",
+      "position": {
+        "x": 700,
+        "y": 520
+      },
+      "parameters": {
+        "capacity_tons": 5000,
+        "initial_level_pct": 65
+      },
+      "state": {},
+      "ports": {
+        "in_solid": {
+          "name": "in_solid",
+          "direction": "IN",
+          "phase": "SOLID",
+          "description": "Inlet material from elevator",
+          "required": true,
+          "connected_stream_id": 1
+        },
+        "out_solid": {
+          "name": "out_solid",
+          "direction": "OUT",
+          "phase": "SOLID",
+          "description": "Discharge to downstream process",
+          "required": true,
+          "connected_stream_id": null
+        }
+      }
+    }
+  ],
+  "connections": [
+    {
+      "stream_id": 1,
+      "name": "Gravimetric Feeder 1 \u2192 Silo Storage 1",
+      "source": {
+        "block": "FEEDER_01",
+        "port": "out_solid"
+      },
+      "target": {
+        "block": "SILO_01",
+        "port": "in_solid"
+      },
+      "phase": "SOLID",
+      "mass_flow_tph": 0,
+      "temperature_c": 25,
+      "pressure_mbar": 0,
+      "enthalpy_gjh": 0,
+      "composition": {}
+    }
+  ]
+}

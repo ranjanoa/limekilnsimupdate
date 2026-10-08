@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PROSIM STUDIO — Modular Process Simulation & OPC UA Digital Twin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+</head>
+<body class="prosim-app">
+  <!-- TWO-TIER COMPACT CONTROL HEADER -->
+  <header class="prosim-header" id="prosimHeader">
+    <!-- TIER 1: BRAND, OPC UA BRIDGE, FILE TOOLS & LIVE KPIS -->
+    <div class="header-tier tier-top">
+      <div class="tier-left">
+        <div class="plant-logo">
+          <span class="logo-icon">⚡</span>
+          <div class="logo-text">
+            <span class="brand">PROSIM STUDIO</span>
+            <span class="subbrand">Modular Process Simulation Twin</span>
+          </div>
+        </div>
+
+        <div class="tier-divider"></div>
+
+        <!-- OPC UA Live Connection Status -->
+        <div class="status-pill opc-pill" id="opcStatusPill" title="OPC UA Server Status (Click to open Tag Studio)">
+          <span class="status-dot opc-dot"></span>
+          <span id="opcStatusText">OPC UA: Checking...</span>
+        </div>
+
+        <button id="btnBuilderDeploy" class="hdr-btn btn-opc" title="Deploy Flowsheet & Auto-Register Variables to OPC UA Server">🔌 Deploy OPC UA</button>
+        <button id="btnTagStudio" class="hdr-btn btn-tag-studio" title="Open Configurable Tag & OPC UA Connection Studio">📡 Tag & OPC Studio</button>
+      </div>
+
+      <div class="tier-right">
+        <!-- File & Project Actions -->
+        <div class="file-actions-group">
+          <button id="btnBuilderSave" class="hdr-btn" title="Save Flowsheet to Server">💾 Save</button>
+          <button id="btnBuilderExportJson" class="hdr-btn" title="Export Flowsheet JSON">⬇ JSON</button>
+          <button id="btnBuilderImportJson" class="hdr-btn" title="Import Flowsheet JSON">⬆ Import</button>
+          <input type="file" id="builderImportFileInput" accept=".json" style="display:none;">
+          <button id="btnBuilderExportCsv" class="hdr-btn" title="Export Stream Table CSV">📊 CSV</button>
+          <button id="btnToggleFullscreen" class="hdr-btn btn-fs-toggle" title="Toggle Edge-to-Edge Fullscreen">⛶ Fullscreen</button>
+        </div>
+
+        <div class="tier-divider"></div>
+
+        <!-- Global Live Mass & Energy Balance Ribbon -->
+        <div class="builder-kpi-ribbon">
+          <div class="builder-kpi-pill" title="Total Material Inflow to Flowsheet Boundary">
+            <span class="lbl">IN:</span>
+            <strong class="val cyan" id="bkpiMassIn">0.0 t/h</strong>
+          </div>
+          <div class="builder-kpi-pill" title="Total Material Outflow from Flowsheet Boundary">
+            <span class="lbl">OUT:</span>
+            <strong class="val green" id="bkpiMassOut">0.0 t/h</strong>
+          </div>
+          <div class="builder-kpi-pill" title="Mass Balance Conservation Closure Percentage">
+            <span class="lbl">CLOSURE:</span>
+            <strong class="val" id="bkpiClosure" style="color: #6EE7B7;">100.0%</strong>
+          </div>
+          <div class="builder-kpi-pill" title="Total Fuel Thermal Power Input">
+            <span class="lbl">POWER:</span>
+            <strong class="val amber" id="bkpiFuelPower">0.0 MW</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TIER 2: SIMULATION CONTROLS, TEMPLATES & SCENARIOS -->
+    <div class="header-tier tier-bottom">
+      <div class="tier-left">
+        <!-- Simulation Status Pill -->
+        <div class="status-pill ready" id="simStatusPill" title="Simulation Engine State">
+          <span class="status-dot"></span>
+          <span id="simStatusText">READY</span>
+        </div>
+
+        <!-- Sim Time Clock -->
+        <div class="sim-clock" title="Simulation Elapsed Dynamic Time">
+          <span class="clock-label">TIME:</span>
+          <span class="clock-val" id="simTimeDisplay">00:00:00</span>
+        </div>
+
+        <!-- Speed Selector -->
+        <div class="speed-selector" title="Simulation Dynamic Stepping Speed">
+          <button class="speed-btn active" data-speed="1">1x</button>
+          <button class="speed-btn" data-speed="2">2x</button>
+          <button class="speed-btn" data-speed="5">5x</button>
+          <button class="speed-btn" data-speed="10">10x</button>
+        </div>
+
+        <div class="tier-divider"></div>
+
+        <!-- Simulation Run & Solve Triggers -->
+        <div class="sim-actions-group">
+          <button id="btnBuilderRunSim" class="hdr-btn btn-sim-run" title="Run / Pause Real-time Dynamic Simulation">▶ Run Sim</button>
+          <button id="btnBuilderSolve" class="hdr-btn btn-sim-solve" title="Solve Steady-State Mass & Energy Balances">⚡ Solve Balances</button>
+          <button id="btnReset" class="hdr-btn btn-sim-reset" title="Reset Flowsheet to 280 tph Nominal Steady State">↺ Reset</button>
+          <button id="btnBuilderNew" class="hdr-btn" title="Create New Blank Flowsheet">📄 New</button>
+        </div>
+      </div>
+
+      <div class="tier-right">
+        <!-- Templates & Scenarios Bar -->
+        <div class="flowsheet-select-group">
+          <div class="select-wrapper" title="Load pre-built flowsheet template">
+            <span class="select-icon">📋</span>
+            <select id="builderTemplateSelect" class="hdr-select">
+              <option value="">-- Load Template --</option>
+            </select>
+          </div>
+
+          <div class="select-wrapper" title="Select pre-configured operational scenario">
+            <span class="select-icon">🎯</span>
+            <select id="builderScenarioSelect" class="hdr-select builder-scenario-select">
+              <option value="">-- Scenario --</option>
+            </select>
+          </div>
+
+          <button id="btnBuilderApplyScenario" class="hdr-btn btn-amber" title="Apply selected operational scenario">🎯 Apply</button>
+          <button id="btnBuilderVerifyScenarios" class="hdr-btn" title="Automated Verification Suite across 12 Scenarios">🧪 Verify All</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN FULL-SCREEN FLOWSHEET BUILDER WORKSPACE -->
+  <main class="flowsheet-builder-wrapper full-screen-app" id="builderWrapper">
+    <!-- Operational Scenario Banner & Physics Diagnostics -->
+    <div class="builder-scenario-banner" id="builderScenarioBanner" style="display: none;">
+      <div class="scenario-banner-left">
+        <span class="scenario-banner-icon" id="scenarioBannerIcon">⚖️</span>
+        <div class="scenario-banner-text">
+          <div class="scenario-title-row">
+            <strong id="scenarioBannerTitle">Nominal Design Baseline</strong>
+            <span class="scenario-severity-badge severity-normal" id="scenarioSeverityBadge">NORMAL</span>
+            <span class="scenario-cat-badge" id="scenarioCatBadge">Baseline Operations</span>
+          </div>
+          <p id="scenarioBannerDesc">Plant operating at nominal steady state.</p>
+        </div>
+      </div>
+      <div class="scenario-banner-right">
+        <div class="scenario-validation-badge badge-pass" id="scenarioValidationBadge">✓ Physics Checks Met</div>
+        <button class="btn-scenario-dismiss" id="btnScenarioDismiss" title="Close banner">✕</button>
+      </div>
+    </div>
+
+    <!-- 3-Panel Main Workspace -->
+    <div class="builder-workspace">
+      <!-- Left: Component Palette -->
+      <!-- Left: Combined Flowsheets & Component Palette Sidebar -->
+      <div class="builder-palette" id="builderPalette">
+        <div class="palette-header">
+          <div class="palette-header-title">
+            <h4>PROSIM WORKSPACE</h4>
+            <span class="palette-subtitle">Flowsheets & Library</span>
+          </div>
+          <button id="btnTogglePalette" class="panel-collapse-btn" title="Collapse Sidebar">◀</button>
+        </div>
+
+        <!-- Section 1: Collapsible Flowsheets Library -->
+        <div class="palette-accordion-section" id="accSectionFlowsheets">
+          <div class="palette-accordion-header" id="accHeaderFlowsheets">
+            <div class="accordion-header-left">
+              <span class="accordion-toggle-arrow" id="arrowFlowsheets">▼</span>
+              <span class="accordion-title">📁 Flowsheet Library</span>
+            </div>
+            <span class="accordion-badge" id="flowsheetCountBadge">0</span>
+          </div>
+          <div class="palette-accordion-body" id="accBodyFlowsheets">
+            <!-- Flowsheet Management Actions -->
+            <div class="flowsheet-actions-row">
+              <button class="fs-act-btn" id="btnSaveFlowsheet" title="Save current flowsheet layout & block positions">💾 Save</button>
+              <button class="fs-act-btn" id="btnNewFlowsheet" title="Create a new blank flowsheet">➕ Blank</button>
+              <button class="fs-act-btn" id="btnExportFlowsheet" title="Export flowsheet as JSON file">📤 Export</button>
+              <button class="fs-act-btn" id="btnImportFlowsheet" title="Import flowsheet from JSON file">📥 Import</button>
+              <input type="file" id="fileImportFlowsheet" accept=".json" style="display: none;">
+            </div>
+            <!-- Grid Snap & Position Controls -->
+            <div class="grid-snap-bar">
+              <label class="grid-snap-label" title="Snap block movements to 20px grid">
+                <input type="checkbox" id="chkGridSnap" checked> Snap to Grid
+              </label>
+              <span class="grid-snap-status" id="gridSnapIndicator">20px Grid: ON</span>
+            </div>
+            <!-- Flowsheet Category Filter Tabs -->
+            <div class="flowsheet-subtabs-row" id="flowsheetSubtabs">
+              <button class="fs-subtab-btn active" data-tab="all" id="tabBtnAll">All (<span id="tabCountAll">0</span>)</button>
+              <button class="fs-subtab-btn" data-tab="templates" id="tabBtnTemplates">🏭 Templates (<span id="tabCountTpl">0</span>)</button>
+              <button class="fs-subtab-btn" data-tab="saved" id="tabBtnSaved">⭐ Saved (<span id="tabCountSaved">0</span>)</button>
+            </div>
+            <!-- Flowsheet List Scroll Area (Templates + Custom Saved) -->
+            <div class="flowsheets-list-scroll" id="flowsheetsListScroll">
+              <!-- Dynamically populated with prebuilt templates and user-saved flowsheets -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 2: Collapsible Component Library -->
+        <div class="palette-accordion-section" id="accSectionComponents">
+          <div class="palette-accordion-header" id="accHeaderComponents">
+            <div class="accordion-header-left">
+              <span class="accordion-toggle-arrow" id="arrowComponents">▼</span>
+              <span class="accordion-title">📦 Component Library</span>
+            </div>
+            <span class="accordion-badge" id="componentCountBadge">14</span>
+          </div>
+          <div class="palette-accordion-body" id="accBodyComponents">
+            <div class="palette-search-wrapper">
+              <input type="text" class="palette-search" id="paletteSearch" placeholder="Filter equipment...">
+            </div>
+            <div class="palette-items-scroll" id="paletteItemsScroll">
+              <!-- Dynamically populated from /api/flowsheet/builder/components -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Center: Interactive CAD Grid & SVG Canvas -->
+      <div class="builder-canvas-container" id="builderCanvasWrapper">
+        <!-- Toast notification container -->
+        <div class="builder-toast-container" id="builderToastContainer"></div>
+
+        <!-- Canvas Floating Controls -->
+        <div class="builder-canvas-controls">
+          <button class="canvas-ctrl-btn" id="btnBuilderZoomIn" title="Zoom In">+</button>
+          <button class="canvas-ctrl-btn" id="btnBuilderZoomOut" title="Zoom Out">-</button>
+          <button class="canvas-ctrl-btn" id="btnBuilderZoomReset" title="Reset Zoom (100%)">100%</button>
+          <button class="canvas-ctrl-btn" id="btnBuilderFit" title="Fit to Screen">⛶</button>
+          <span class="canvas-coord-badge" id="builderCoordDisplay">X: 0 | Y: 0</span>
+        </div>
+
+        <svg id="builderSvg">
+          <defs>
+            <filter id="builderGlow" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="3" result="blur" />
+              <feComposite in="SourceGraphic" in2="blur" operator="over" />
+            </filter>
+            <!-- Canvas Grid Pattern -->
+            <pattern id="canvasGridPattern" width="40" height="40" patternUnits="userSpaceOnUse">
+              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255,255,255,0.035)" stroke-width="1"/>
+              <circle cx="0" cy="0" r="1" fill="rgba(255,255,255,0.1)"/>
+            </pattern>
+          </defs>
+          <!-- Grid Background -->
+          <rect width="100%" height="100%" fill="#090D16"/>
+          <rect width="100%" height="100%" fill="url(#canvasGridPattern)"/>
+
+          <g id="builderGraphGroup">
+            <!-- Stream Wires Layer -->
+            <g id="builderWiresLayer"></g>
+            <!-- Elastic Drafting Wire -->
+            <path id="builderDraftWire" class="draft-wire" style="display:none;" d=""></path>
+            <!-- Equipment Blocks Layer -->
+            <g id="builderBlocksLayer"></g>
+          </g>
+        </svg>
+      </div>
+
+      <!-- Right: Inspector Sidebar -->
+      <div class="builder-inspector" id="builderInspector">
+        <div class="inspector-header">
+          <h4 id="builderInspectorTitle">Flowsheet Overview</h4>
+          <button id="btnToggleInspector" class="panel-collapse-btn" title="Collapse Inspector Sidebar">▶</button>
+        </div>
+        <div class="inspector-body" id="builderInspectorBody">
+          <!-- Dynamically populated based on selection -->
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- MODAL: SCENARIOS AUTOMATED VERIFICATION MATRIX -->
+  <div class="builder-modal" id="modalVerifyScenarios" style="display: none;">
+    <div class="builder-modal-backdrop" id="modalVerifyScenariosBackdrop"></div>
+    <div class="builder-modal-content verify-modal-wide">
+      <div class="builder-modal-header">
+        <div class="modal-header-title">
+          <span style="font-size: 20px;">🧪</span>
+          <h3>Operational Scenarios Automated Physics Verification Matrix</h3>
+        </div>
+        <button class="modal-close-btn" id="btnVerifyModalClose">✕</button>
+      </div>
+      <div class="builder-modal-body">
+        <div class="verify-summary-card">
+          <div class="verify-stat-header">
+            <span class="verify-stat-lbl">AUTOMATED FIRST-PRINCIPLES SUITE:</span>
+            <strong class="verify-stat-val pass-text" id="verifyPassRate">12 / 12 PASSED (100.0%)</strong>
+          </div>
+          <p>All canonical operational modes verified across coupled thermodynamics, Arrhenius calcination kinetics, flame energy release, clinker free-lime mineralogy, and 100.0% mass closure.</p>
+        </div>
+        <div class="verify-table-container">
+          <table class="verify-results-table">
+            <thead>
+              <tr>
+                <th>Scenario</th>
+                <th>Category</th>
+                <th>Calciner Temp</th>
+                <th>Decarb %</th>
+                <th>BZT (°C)</th>
+                <th>Free Lime %</th>
+                <th>Mass Closure</th>
+                <th>Verification</th>
+              </tr>
+            </thead>
+            <tbody id="verifyTableBody">
+              <!-- Populated dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ONLINE TAG & OPC UA CONNECTION STUDIO -->
+  <div class="modal-backdrop" id="tagStudioModal">
+    <div class="modal-dialog modal-xl tag-studio-dialog">
+      <div class="modal-header">
+        <div class="modal-title-with-badge">
+          <h3>📡 Online Tag & OPC UA Connection Studio</h3>
+          <span class="badge" id="tagStudioBadge">Configurable Dynamic Tags</span>
+          <span class="badge-opc-status" id="tagStudioOpcPill">
+            <span class="status-dot-sm"></span>
+            <span id="tagStudioOpcStatusText">OPC UA Server: opc.tcp://0.0.0.0:4841</span>
+          </span>
+        </div>
+        <button class="modal-close" id="btnCloseTagStudio">×</button>
+      </div>
+
+      <div class="modal-body tag-studio-body">
+        <!-- TOP SUMMARY & QUICK CONTROLS BAR -->
+        <div class="tag-studio-topbar">
+          <div class="tag-metrics-strip">
+            <div class="tag-metric-box">
+              <span class="tm-lbl">TOTAL TAGS</span>
+              <strong class="tm-val cyan" id="statTotalTags">0</strong>
+            </div>
+            <div class="tag-metric-box">
+              <span class="tm-lbl">SETPOINTS</span>
+              <strong class="tm-val blue" id="statSetpoints">0</strong>
+            </div>
+            <div class="tag-metric-box">
+              <span class="tm-lbl">MEASUREMENTS</span>
+              <strong class="tm-val purple" id="statMeasurements">0</strong>
+            </div>
+            <div class="tag-metric-box">
+              <span class="tm-lbl">⚡ OPC UA MAPPED</span>
+              <strong class="tm-val green" id="statOpcTags">0</strong>
+            </div>
+            <div class="tag-metric-box">
+              <span class="tm-lbl">💻 LOCAL CONTROL</span>
+              <strong class="tm-val amber" id="statLocalTags">0</strong>
+            </div>
+          </div>
+
+          <div class="tag-topbar-actions">
+            <button id="btnTestOpc" class="btn btn-sm btn-outline" title="Ping & Test OPC UA Server Availability">🔌 Test OPC Connection</button>
+            <button id="btnSetAllLocal" class="btn btn-sm btn-secondary" title="Switch all setpoints to Local operator control">💻 All Setpoints Local</button>
+            <button id="btnSetAllOpc" class="btn btn-sm btn-secondary" title="Switch all setpoints to external OPC UA control">⚡ All Setpoints OPC UA</button>
+            <button id="btnOpenAddTag" class="btn btn-sm btn-primary" title="Define a new measurement or setpoint tag">➕ Add Custom Tag</button>
+          </div>
+        </div>
+
+        <!-- SEARCH AND FILTER TOOLBAR -->
+        <div class="tag-filter-toolbar">
+          <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="tagSearchInput" placeholder="Filter tags by name, ID, HMI tag, or Node ID..." autocomplete="off">
+            <button id="btnClearSearch" class="btn-micro" title="Clear Search">✕</button>
+          </div>
+
+          <div class="filter-tab-buttons">
+            <button class="filter-pill active" data-filter="all">All Tags (<span id="cntFilterAll">0</span>)</button>
+            <button class="filter-pill" data-filter="setpoint">Setpoints (<span id="cntFilterSP">0</span>)</button>
+            <button class="filter-pill" data-filter="measurement">Measurements (<span id="cntFilterPV">0</span>)</button>
+            <button class="filter-pill" data-filter="opc_ua">⚡ OPC UA (<span id="cntFilterOpc">0</span>)</button>
+            <button class="filter-pill" data-filter="local">💻 Local (<span id="cntFilterLocal">0</span>)</button>
+          </div>
+        </div>
+
+        <!-- CONNECTION NOTIFICATION / TEST RESULT BANNER -->
+        <div class="opc-test-banner" id="opcTestBanner" style="display: none;">
+          <span id="opcTestBannerIcon">ℹ</span>
+          <span id="opcTestBannerText">Testing OPC UA Server...</span>
+          <button id="btnCloseTestBanner" class="banner-close">✕</button>
+        </div>
+
+        <!-- TAGS DATA TABLE -->
+        <div class="tag-table-wrapper">
+          <table class="tag-grid-table">
+            <thead>
+              <tr>
+                <th style="width: 220px;">Tag ID & Description</th>
+                <th style="width: 85px;">HMI Tag</th>
+                <th style="width: 100px;">Category</th>
+                <th style="width: 145px;">Control Source</th>
+                <th style="width: 140px;">Live Value / Setpoint</th>
+                <th style="width: 60px;">Unit</th>
+                <th style="width: 220px;">OPC UA Node ID</th>
+                <th style="width: 75px;">Direction</th>
+                <th style="width: 90px;">Range</th>
+                <th style="width: 75px;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="tagGridTableBody">
+              <!-- Dynamically populated rows -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+      
+      <div class="modal-footer tag-studio-footer">
+        <span class="footer-hint">💡 Tip: Flowsheet blocks automatically publish their process variables and setpoints as OPC UA nodes when you click <strong>🔌 Deploy OPC UA</strong>. You can monitor or tune them in real time here.</span>
+        <button id="btnCloseTagStudioFooter" class="btn btn-secondary">Close Studio</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ADD / EDIT CUSTOM TAG -->
+  <div class="modal-backdrop" id="customTagModal" style="z-index: 1010;">
+    <div class="modal-dialog tag-modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-with-badge">
+          <h4 id="customTagModalTitle">➕ Add Custom Process Tag</h4>
+          <span class="badge">Dynamic Registration</span>
+        </div>
+        <button class="modal-close" id="btnCloseCustomTagModal">×</button>
+      </div>
+      <div class="modal-body">
+        <form id="customTagForm" onsubmit="return false;">
+          <div class="cfg-section" style="border: none; padding: 0; background: transparent;">
+            <div class="cfg-field-row">
+              <label>Tag Identifier (alphanumeric_snake_case): *</label>
+              <input type="text" id="tagEditId" class="cfg-input" style="width: 240px;" placeholder="e.g. K3_TAD_Pressure_SP" required>
+            </div>
+            <div class="cfg-field-row">
+              <label>Display Name / Description: *</label>
+              <input type="text" id="tagEditName" class="cfg-input" style="width: 240px;" placeholder="e.g. Tertiary Air Duct Static Pressure SP" required>
+            </div>
+            <div class="cfg-field-row">
+              <label>HMI Instrument Tag: *</label>
+              <input type="text" id="tagEditHmi" class="cfg-input" style="width: 140px;" placeholder="e.g. PIC-402" required>
+            </div>
+            <div class="cfg-field-row">
+              <label>Category: *</label>
+              <select id="tagEditCategory" class="cfg-select" style="width: 170px;">
+                <option value="setpoint">🎯 Setpoint (Manipulated Var)</option>
+                <option value="measurement">📊 Measurement (Process Var)</option>
+              </select>
+            </div>
+            <div class="cfg-field-row">
+              <label>Initial Control Source: *</label>
+              <select id="tagEditSource" class="cfg-select" style="width: 170px;">
+                <option value="local">💻 Local (Internal Sim / Manual)</option>
+                <option value="opc_ua">⚡ OPC UA (Server Node / External)</option>
+              </select>
+            </div>
+            <div class="cfg-field-row">
+              <label>OPC UA Node ID: *</label>
+              <input type="text" id="tagEditNodeId" class="cfg-input" style="width: 260px;" placeholder="ns=2;s=Kiln3.Setpoints.MyTag">
+            </div>
+            <div class="cfg-field-row">
+              <label>OPC UA Direction: *</label>
+              <select id="tagEditDirection" class="cfg-select" style="width: 170px;">
+                <option value="read">📥 Read (PV Telemetry to OPC)</option>
+                <option value="write">📤 Write (SP Received from OPC)</option>
+              </select>
+            </div>
+            <div class="cfg-field-row">
+              <label>Engineering Unit:</label>
+              <input type="text" id="tagEditUnit" class="cfg-input" style="width: 120px;" placeholder="e.g. mbar, °C, t/h">
+            </div>
+            <div class="cfg-field-row">
+              <label>Limits (Min / Max / Default):</label>
+              <div class="triple-inputs" style="display: flex; gap: 6px; width: 240px;">
+                <input type="number" id="tagEditMin" placeholder="Min" class="cfg-input" style="width: 75px;">
+                <input type="number" id="tagEditMax" placeholder="Max" class="cfg-input" style="width: 75px;">
+                <input type="number" id="tagEditDef" placeholder="Def" class="cfg-input" style="width: 75px;">
+              </div>
+            </div>
+          </div>
+          <div class="cfg-status-message" id="customTagStatusMsg" style="margin-top: 12px;"></div>
+          <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; border-top: 1px solid var(--border-accent); padding-top: 12px;">
+            <button type="button" id="btnCancelCustomTag" class="btn btn-secondary">Cancel</button>
+            <button type="button" id="btnSaveCustomTag" class="btn btn-primary">Save Tag</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- APPLICATION SCRIPTS -->
+  <script src="app.js"></script>
+  <script src="flowsheet_builder.js"></script>
+</body>
+</html>
