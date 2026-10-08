@@ -117,7 +117,10 @@ class ModularEngineManager:
     def rename_block(self, old_block_id: str, new_block_id: str) -> Dict[str, Any]:
         """Renames a block in the active flowsheet and propagates to connections."""
         if not self.active_graph:
-            return {"status": "error", "message": "No active graph"}
+            return {"status": "skipped", "message": "No active graph", "old_id": old_block_id, "new_id": new_block_id}
+        if old_block_id not in self.active_graph.blocks:
+            # Block exists only on the UI canvas so far (synced on Solve/Deploy) - nothing to rename server-side.
+            return {"status": "skipped", "message": f"Block '{old_block_id}' not in backend graph yet; will sync on next Solve/Deploy", "old_id": old_block_id, "new_id": new_block_id}
         try:
             self.active_graph.rename_block(old_block_id, new_block_id)
             return {"status": "success", "old_id": old_block_id, "new_id": new_block_id}

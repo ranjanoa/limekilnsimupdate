@@ -465,7 +465,7 @@ class SimulatorRestHttpHandler(SimpleHTTPRequestHandler):
                 old_id = body.get("old_block_id") or body.get("old_id")
                 new_id = body.get("new_block_id") or body.get("new_id")
                 res = modular_manager.rename_block(old_id, new_id)
-                self.send_response(200 if res.get("status") == "success" else 400)
+                self.send_response(200 if res.get("status") in ("success", "skipped") else 400)
                 self.send_header("Content-Type", "application/json")
                 self._send_cors_headers()
                 self.end_headers()
