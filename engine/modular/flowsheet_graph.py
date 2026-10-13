@@ -133,7 +133,9 @@ class FlowsheetGraph:
         )
 
         self.streams[sid] = stream
-        src_port.connected_stream_id = sid
+        # If target is StreamSensor (tap), preserve existing process connection on src_port
+        if dst_block.block_type != "StreamSensor" or src_port.connected_stream_id is None:
+            src_port.connected_stream_id = sid
         dst_port.connected_stream_id = sid
 
         return stream
@@ -147,7 +149,13 @@ class FlowsheetGraph:
         if stream.from_block in self.blocks:
             src_block = self.blocks[stream.from_block]
             if stream.from_port in src_block.ports:
-                src_block.ports[stream.from_port].connected_stream_id = None
+                if src_block.ports[stream.from_port].connected_stream_id == stream_id:
+                    # Check if there is another stream originating from this port
+                    other_streams = [
+                        s.stream_id for s in self.streams.values()
+                        if s.stream_id != stream_id and s.from_block == stream.from_block and s.from_port == stream.from_port
+                    ]
+                    src_block.ports[stream.from_port].connected_stream_id = other_streams[0] if other_streams else None
 
         if stream.to_block in self.blocks:
             dst_block = self.blocks[stream.to_block]
@@ -170,17 +178,75 @@ class FlowsheetGraph:
         return result
 
     def get_block_outlets(self, block_id: str) -> Dict[str, ProcessStream]:
-        """Returns map of {port_name: ProcessStream} for outlet ports."""
+        """
+        Returns map of {port_name: ProcessStream} for outlet ports.
+        Prioritizes main process streams over passive StreamSensor tap connections.
+        """
         block = self.blocks.get(block_id)
         if not block:
             return {}
         result = {}
         for p_name, p in block.ports.items():
-            if p.direction == PortDirection.OUT and p.connected_stream_id in self.streams:
-                result[p_name] = self.streams[p.connected_stream_id]
-            elif p.direction == PortDirection.OUT:
+            if p.direction != PortDirection.OUT:
+                continue
+            outgoing = [
+                s for s in self.streams.values()
+                if s.from_block == block_id and s.from_port == p_name
+            ]
+            if not outgoing:
                 result[p_name] = None
+                continue
+            # Prefer non-StreamSensor process streams for core equipment simulation
+            proc_out = [
+                s for s in outgoing
+                if s.to_block in self.blocks and self.blocks[s.to_block].block_type != "StreamSensor"
+            ]
+            result[p_name] = proc_out[0] if proc_out else outgoing[0]
         return result
+
+    def sync_sensor_streams(self, block_id: str) -> None:
+        """
+        Synchronizes all StreamSensor tap streams connected to block_id's outlet ports
+        with the primary process stream state, ensuring sensors receive live chemical assays
+        without consuming mass or energy.
+        """
+        block = self.blocks.get(block_id)
+        if not block:
+            return
+
+        import copy
+        for p_name, port in block.ports.items():
+            if port.direction != PortDirection.OUT:
+                continue
+            outgoing = [
+                s for s in self.streams.values()
+                if s.from_block == block_id and s.from_port == p_name
+            ]
+            if len(outgoing) <= 1:
+                continue
+
+            # Find primary stream (to a non-sensor block)
+            primary = next(
+                (s for s in outgoing if s.to_block in self.blocks and self.blocks[s.to_block].block_type != "StreamSensor"),
+                None
+            )
+            if not primary:
+                continue
+
+            # Synchronize all StreamSensor taps with the primary stream
+            for s in outgoing:
+                if s.stream_id != primary.stream_id:
+                    tgt_block = self.blocks.get(s.to_block)
+                    if tgt_block and tgt_block.block_type == "StreamSensor":
+                        s.update_state(
+                            mass_flow_tph=primary.mass_flow_tph,
+                            temperature_c=primary.temperature_c,
+                            pressure_mbar=primary.pressure_mbar,
+                            composition=copy.deepcopy(primary.composition),
+                            volume_flow_nm3h=primary.volume_flow_nm3h,
+                        )
+                        s.enthalpy_gjh = primary.enthalpy_gjh
+                        s.phase = primary.phase
 
     def get_upstream_blocks(self, block_id: str) -> List[str]:
         """Finds all direct predecessor block IDs."""
@@ -268,6 +334,8 @@ class FlowsheetGraph:
         warnings = []
 
         for b_id, block in self.blocks.items():
+            if block.block_type == "StreamSensor":
+                continue
             for p_name, port in block.ports.items():
                 if port.required and port.connected_stream_id is None:
                     if port.direction == PortDirection.IN:
@@ -307,6 +375,10 @@ class FlowsheetGraph:
         total_heat_loss_gjh = 0.0
 
         for b_id, b in self.blocks.items():
+            # STREAM SENSOR: Completely ignored in mass and energy balance audits
+            if b.block_type == "StreamSensor":
+                continue
+
             # 1. Feeder inputs
             if b.block_type in ("GravimetricFeeder", "FuelFeeder"):
                 for s in self.get_block_outlets(b_id).values():
@@ -340,7 +412,7 @@ class FlowsheetGraph:
                 # Cooler vent air to atmosphere (if unconnected or terminal)
                 outlets = self.get_block_outlets(b_id)
                 vent_s = outlets.get("out_vent_air")
-                if vent_s and (not vent_s.to_block or vent_s.to_block not in self.blocks):
+                if vent_s and (not vent_s.to_block or vent_s.to_block not in self.blocks or (vent_s.to_block in self.blocks and self.blocks[vent_s.to_block].block_type == "StreamSensor")):
                     total_outflow_tph += vent_s.mass_flow_tph
                     total_heat_out_gjh += vent_s.enthalpy_gjh
                 elif not vent_s:
@@ -356,7 +428,7 @@ class FlowsheetGraph:
 
                 # Check if tertiary air is unconnected (e.g. standalone lime kiln without calciner)
                 tert_s = outlets.get("out_tertiary_air")
-                if not tert_s or (tert_s.to_block and tert_s.to_block not in self.blocks):
+                if not tert_s or (tert_s.to_block and (tert_s.to_block not in self.blocks or self.blocks[tert_s.to_block].block_type == "StreamSensor")):
                     m_air_tot = float(b.parameters.get("cooling_air_total_tph", 348.5))
                     tert_pct = float(b.parameters.get("tertiary_air_split_pct", 36.8)) / 100.0
                     if tert_pct > 0.0:
@@ -365,11 +437,17 @@ class FlowsheetGraph:
                         total_outflow_tph += m_tert_tph
                         total_heat_out_gjh += m_tert_tph * 0.26 * 4.184 / 1000.0 * max(0.0, t_tert_c - 25.0)
 
-        # Account for streams exiting graph
+        # Account for streams exiting graph (excluding all StreamSensor connections)
         for s in self.streams.values():
-            if s.to_block not in self.blocks and s.from_block in self.blocks:
-                total_outflow_tph += s.mass_flow_tph
-                total_heat_out_gjh += s.enthalpy_gjh
+            if s.from_block in self.blocks:
+                from_b = self.blocks.get(s.from_block)
+                to_b = self.blocks.get(s.to_block) if s.to_block else None
+                # StreamSensor connections MUST BE COMPLETELY IGNORED in mass and energy balance calculations
+                if (from_b and from_b.block_type == "StreamSensor") or (to_b and to_b.block_type == "StreamSensor"):
+                    continue
+                if not to_b or s.to_block not in self.blocks:
+                    total_outflow_tph += s.mass_flow_tph
+                    total_heat_out_gjh += s.enthalpy_gjh
 
         mass_err = abs(total_inflow_tph - total_outflow_tph)
         closure_pct = 100.0 - ((mass_err / max(1.0, total_inflow_tph)) * 100.0) if total_inflow_tph > 0 else 100.0

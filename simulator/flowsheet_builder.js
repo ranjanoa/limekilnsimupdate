@@ -882,7 +882,9 @@
     };
 
     state.graph.connections.push(newConnection);
-    srcPort.connected_stream_id = streamId;
+    if (dstBlock.type !== 'StreamSensor' || !srcPort.connected_stream_id) {
+      srcPort.connected_stream_id = streamId;
+    }
     dstPort.connected_stream_id = streamId;
 
     selectStream(streamId);
@@ -896,7 +898,10 @@
 
     const srcBlock = state.graph.components.find(b => b.id === conn.source.block);
     if (srcBlock && srcBlock.ports[conn.source.port]) {
-      srcBlock.ports[conn.source.port].connected_stream_id = null;
+      const remainingConn = state.graph.connections.find(
+        c => c.stream_id !== streamId && c.source.block === conn.source.block && c.source.port === conn.source.port
+      );
+      srcBlock.ports[conn.source.port].connected_stream_id = remainingConn ? remainingConn.stream_id : null;
     }
     const dstBlock = state.graph.components.find(b => b.id === conn.target.block);
     if (dstBlock && dstBlock.ports[conn.target.port]) {

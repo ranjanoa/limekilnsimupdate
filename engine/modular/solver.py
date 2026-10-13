@@ -75,6 +75,7 @@ class FlowsheetSolver:
                 inlets = self.graph.get_block_inlets(b_id)
                 outlets = self.graph.get_block_outlets(b_id)
                 block.evaluate_steady_state(inlets, outlets)
+                self.graph.sync_sensor_streams(b_id)
 
             if not tear_stream_ids:
                 # Pure feed-forward acyclic flowsheet converges in 1 pass
@@ -148,6 +149,7 @@ class FlowsheetSolver:
             inlets = self.graph.get_block_inlets(b_id)
             outlets = self.graph.get_block_outlets(b_id)
             block.step(dt, inlets, outlets)
+            self.graph.sync_sensor_streams(b_id)
 
         self.simulation_time_s += dt
         self.step_count += 1

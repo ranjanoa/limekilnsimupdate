@@ -55,30 +55,6 @@ class StreamSensor(BlockBase):
                 "unit": "s",
                 "label": "Assay Filter Lag",
             },
-            "stream_loss_pct": {
-                "type": float,
-                "default": 0.0,
-                "min": 0.0,
-                "max": 5.0,
-                "unit": "%",
-                "label": "Sampling Extraction Loss",
-            },
-            "temp_drop_c": {
-                "type": float,
-                "default": 0.0,
-                "min": 0.0,
-                "max": 50.0,
-                "unit": "°C",
-                "label": "Sensor Temperature Drop",
-            },
-            "dp_mbar": {
-                "type": float,
-                "default": 0.0,
-                "min": 0.0,
-                "max": 20.0,
-                "unit": "mbar",
-                "label": "Flow Differential Pressure Drop",
-            },
         }
 
     def initialize(self):
@@ -128,34 +104,25 @@ class StreamSensor(BlockBase):
                 if isinstance(val, (int, float)):
                     s_name = self._normalize_species_name(key)
                     val_float = round(float(val), 3)
-                    # Expose format {ID}_{species}
                     new_state[s_name] = val_float
-                    # If both in and out connectors are connected, also provide connector-specific keys
                     if self.has_outlet_connection:
                         new_state[f"{s_name}_in"] = val_float
 
-        # 2. Outlet Stream Chemical Species & Pass-through Evaluation
+        # 2. Outlet Stream 100% Transparent Pass-through (Zero Mass/Energy Impact)
         if out_stream:
-            loss_frac = max(0.0, min(0.50, float(self.parameters.get("stream_loss_pct", 0.0)) / 100.0))
-            dt_drop = float(self.parameters.get("temp_drop_c", 0.0))
-            dp_drop = float(self.parameters.get("dp_mbar", 0.0))
-
+            comp_in = copy.deepcopy(in_stream.composition) if in_stream else {}
             m_in = in_stream.mass_flow_tph if in_stream else 0.0
             t_in = in_stream.temperature_c if in_stream else 25.0
             p_in = in_stream.pressure_mbar if in_stream else 0.0
-            comp_in = copy.deepcopy(in_stream.composition) if in_stream else {}
-
-            m_out = round(max(0.0, m_in * (1.0 - loss_frac)), 2)
-            t_out = round(max(0.0, t_in - dt_drop), 1)
-            p_out = round(p_in - dp_drop, 2)
 
             out_stream.update_state(
-                mass_flow_tph=m_out,
-                temperature_c=t_out,
-                pressure_mbar=p_out,
+                mass_flow_tph=m_in,
+                temperature_c=t_in,
+                pressure_mbar=p_in,
                 composition=comp_in,
             )
             if in_stream:
+                out_stream.enthalpy_gjh = in_stream.enthalpy_gjh
                 out_stream.phase = in_stream.phase
 
             for key, val in comp_in.items():
@@ -168,6 +135,31 @@ class StreamSensor(BlockBase):
 
         self.state = new_state
         return outlet_streams
+
+    def compute_mass_energy_balance(
+        self,
+        inlet_streams: Dict[str, ProcessStream],
+        outlet_streams: Dict[str, ProcessStream],
+    ) -> Dict[str, float]:
+        """
+        Sensors are measurement instruments and are completely ignored in mass/energy balance audits.
+        Always returns 0.0 mass and energy error.
+        """
+        in_s = inlet_streams.get("in_stream")
+        m = in_s.mass_flow_tph if in_s else 0.0
+        h = in_s.enthalpy_gjh if in_s else 0.0
+        return {
+            "mass_in_tph": round(m, 3),
+            "mass_out_tph": round(m, 3),
+            "mass_err_tph": 0.0,
+            "mass_err_pct": 0.0,
+            "heat_in_gjh": round(h, 3),
+            "heat_out_gjh": round(h, 3),
+            "heat_loss_gjh": 0.0,
+            "energy_err_pct": 0.0,
+        }
+
+    compute_balance_audit = compute_mass_energy_balance
 
     def step(
         self,
