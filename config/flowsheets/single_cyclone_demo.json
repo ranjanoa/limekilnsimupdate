@@ -1,0 +1,327 @@
+{
+  "flowsheet_id": "single_cyclone_demo",
+  "name": "hello",
+  "version": "2.0",
+  "description": "Minimal flowsheet demonstrating gas-solid counter-current thermal exchange.",
+  "components": [
+    {
+      "id": "FEED_01",
+      "name": "Raw Meal Feeder",
+      "type": "GravimetricFeeder",
+      "category": "Feeding",
+      "position": {
+        "x": 40,
+        "y": 300
+      },
+      "parameters": {
+        "nominal_rate_tph": 150,
+        "time_constant_s": 1.5,
+        "temperature_c": 50,
+        "moisture_pct": 0.8,
+        "caco3_pct": 76.85,
+        "mgco3_pct": 2.15,
+        "sio2_pct": 13.5,
+        "al2o3_pct": 3.45,
+        "fe2o3_pct": 2.1
+      },
+      "state": {
+        "actual_feed_rate_tph": 150,
+        "accumulated_tonnage_t": 0,
+        "feeder_status": "RUNNING",
+        "caco3_pct": 76.85,
+        "loi_pct": 34.91,
+        "lsf": 99.4,
+        "heat_loss_gjh": 0
+      },
+      "ports": {
+        "in_material": {
+          "name": "in_material",
+          "direction": "IN",
+          "phase": "SOLID",
+          "description": "Optional upstream silo feed",
+          "required": false,
+          "connected_stream_id": null
+        },
+        "out_solid": {
+          "name": "out_solid",
+          "direction": "OUT",
+          "phase": "SOLID",
+          "description": "Controlled raw meal flow",
+          "required": true,
+          "connected_stream_id": 1
+        }
+      }
+    },
+    {
+      "id": "CYC_01",
+      "name": "Cyclone Stage 1",
+      "type": "CycloneStage",
+      "category": "Separation",
+      "position": {
+        "x": 360,
+        "y": 150
+      },
+      "parameters": {
+        "stage_number": 1,
+        "separation_efficiency": 0.95,
+        "thermal_effectiveness": 0.82,
+        "dp_mbar": 5,
+        "heat_loss_pct": 1.5
+      },
+      "state": {
+        "gas_temp_c": 20,
+        "meal_temp_c": 50,
+        "pressure_drop_mbar": 5,
+        "heat_transferred_gjh": 0,
+        "heat_loss_gjh": 0,
+        "dust_carryover_tph": 7.5
+      },
+      "ports": {
+        "in_gas": {
+          "name": "in_gas",
+          "direction": "IN",
+          "phase": "GAS",
+          "description": "Rising hot flue gas from stage below",
+          "required": true,
+          "connected_stream_id": 2
+        },
+        "in_meal": {
+          "name": "in_meal",
+          "direction": "IN",
+          "phase": "SOLID",
+          "description": "Descending meal from stage above or feeder",
+          "required": true,
+          "connected_stream_id": 1
+        },
+        "out_gas": {
+          "name": "out_gas",
+          "direction": "OUT",
+          "phase": "GAS",
+          "description": "Cooled gas exiting to upper stage or ID fan",
+          "required": true,
+          "connected_stream_id": 4
+        },
+        "out_meal": {
+          "name": "out_meal",
+          "direction": "OUT",
+          "phase": "SOLID",
+          "description": "Preheated meal discharging from dipleg",
+          "required": true,
+          "connected_stream_id": 3
+        }
+      }
+    },
+    {
+      "id": "DAMPER_01",
+      "name": "Hot Gas Riser Damper",
+      "type": "DamperValve",
+      "category": "Flow Control",
+      "position": {
+        "x": 360,
+        "y": 380
+      },
+      "parameters": {
+        "opening_pct": 85,
+        "dp_nominal_mbar": 2
+      },
+      "state": {
+        "actual_dp_mbar": 2,
+        "opening_pct": 80,
+        "heat_loss_gjh": 0
+      },
+      "ports": {
+        "in_stream": {
+          "name": "in_stream",
+          "direction": "IN",
+          "phase": "GAS",
+          "description": "Upstream duct/pipe",
+          "required": true,
+          "connected_stream_id": null
+        },
+        "out_stream": {
+          "name": "out_stream",
+          "direction": "OUT",
+          "phase": "GAS",
+          "description": "Downstream throttled duct",
+          "required": true,
+          "connected_stream_id": 2
+        }
+      }
+    },
+    {
+      "id": "SILO_01",
+      "name": "Collected Meal Bin",
+      "type": "SiloStorage",
+      "category": "Feeding",
+      "position": {
+        "x": 620,
+        "y": 280
+      },
+      "parameters": {
+        "capacity_tons": 500,
+        "initial_level_pct": 65
+      },
+      "state": {
+        "level_pct": 65,
+        "stored_tons": 325,
+        "heat_loss_gjh": 0
+      },
+      "ports": {
+        "in_solid": {
+          "name": "in_solid",
+          "direction": "IN",
+          "phase": "SOLID",
+          "description": "Inlet material from elevator",
+          "required": true,
+          "connected_stream_id": 3
+        },
+        "out_solid": {
+          "name": "out_solid",
+          "direction": "OUT",
+          "phase": "SOLID",
+          "description": "Discharge to downstream process",
+          "required": true,
+          "connected_stream_id": null
+        }
+      }
+    },
+    {
+      "id": "FAN_01",
+      "name": "Suction Draft Fan",
+      "type": "IDFan",
+      "category": "Draft / Fans",
+      "position": {
+        "x": 620,
+        "y": 100
+      },
+      "parameters": {
+        "design_flow_nm3h": 120000,
+        "design_dp_mbar": 65,
+        "damper_pct": 75,
+        "motor_rated_kw": 2500,
+        "fan_efficiency": 0.78
+      },
+      "state": {
+        "actual_flow_nm3h": 5597,
+        "fan_dp_mbar": 38.73,
+        "motor_power_kw": 100,
+        "motor_current_a": 95.1,
+        "inlet_draft_mbar": -5,
+        "outlet_draft_mbar": 33.7,
+        "heat_loss_gjh": 0
+      },
+      "ports": {
+        "in_gas": {
+          "name": "in_gas",
+          "direction": "IN",
+          "phase": "GAS",
+          "description": "Flue gas suction from preheater top stage",
+          "required": true,
+          "connected_stream_id": 4
+        },
+        "out_gas": {
+          "name": "out_gas",
+          "direction": "OUT",
+          "phase": "GAS",
+          "description": "Exhaust gas discharge to baghouse / main stack",
+          "required": true,
+          "connected_stream_id": null
+        }
+      }
+    }
+  ],
+  "connections": [
+    {
+      "stream_id": 1,
+      "name": "Raw Meal Inflow",
+      "source": {
+        "block": "FEED_01",
+        "port": "out_solid"
+      },
+      "target": {
+        "block": "CYC_01",
+        "port": "in_meal"
+      },
+      "phase": "SOLID",
+      "mass_flow_tph": 150,
+      "volume_flow_nm3h": null,
+      "temperature_c": 50,
+      "pressure_mbar": 0,
+      "enthalpy_gjh": 41.069,
+      "composition": {
+        "CaCO3_pct": 76.85,
+        "MgCO3_pct": 2.15,
+        "SiO2_pct": 13.5,
+        "Al2O3_pct": 3.45,
+        "Fe2O3_pct": 2.1,
+        "Moisture_pct": 0.8,
+        "LOI_pct": 34.91
+      }
+    },
+    {
+      "stream_id": 2,
+      "name": "Hot Flue Gas Entry",
+      "source": {
+        "block": "DAMPER_01",
+        "port": "out_stream"
+      },
+      "target": {
+        "block": "CYC_01",
+        "port": "in_gas"
+      },
+      "phase": "GAS",
+      "mass_flow_tph": 0,
+      "volume_flow_nm3h": 0,
+      "temperature_c": 20,
+      "pressure_mbar": 0,
+      "enthalpy_gjh": 0,
+      "composition": {}
+    },
+    {
+      "stream_id": 3,
+      "name": "Captured Meal Discharge",
+      "source": {
+        "block": "CYC_01",
+        "port": "out_meal"
+      },
+      "target": {
+        "block": "SILO_01",
+        "port": "in_solid"
+      },
+      "phase": "SOLID",
+      "mass_flow_tph": 142.5,
+      "volume_flow_nm3h": null,
+      "temperature_c": 50,
+      "pressure_mbar": 0,
+      "enthalpy_gjh": 39.015,
+      "composition": {
+        "CaCO3_pct": 76.85,
+        "MgCO3_pct": 2.15,
+        "SiO2_pct": 13.5,
+        "Al2O3_pct": 3.45,
+        "Fe2O3_pct": 2.1,
+        "Moisture_pct": 0.8,
+        "LOI_pct": 34.91
+      }
+    },
+    {
+      "stream_id": 4,
+      "name": "Cooled Gas Exhaust",
+      "source": {
+        "block": "CYC_01",
+        "port": "out_gas"
+      },
+      "target": {
+        "block": "FAN_01",
+        "port": "in_gas"
+      },
+      "phase": "GAS",
+      "mass_flow_tph": 7.5,
+      "volume_flow_nm3h": 5597,
+      "temperature_c": 20,
+      "pressure_mbar": -5,
+      "enthalpy_gjh": 2.233,
+      "composition": {}
+    }
+  ]
+}

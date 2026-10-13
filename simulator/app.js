@@ -3,7 +3,7 @@
  * Manages OPC UA Connectivity, Tag & OPC Connection Studio, Fullscreen, and UI Paneling.
  */
 
-document.addEventListener('DOMContentLoaded', () => {
+function initApp() {
   'use strict';
 
   // =========================================================================
@@ -60,62 +60,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // =========================================================================
-  // 2. FULLSCREEN & SIDEBAR TOGGLE UTILITIES
+  // 2. FULLSCREEN & SIDEBAR TOGGLE UTILITIES (Unified in flowsheet_builder.js)
   // =========================================================================
-  const btnToggleFullscreen = document.getElementById('btnToggleFullscreen');
-  if (btnToggleFullscreen) {
-    btnToggleFullscreen.addEventListener('click', () => {
-      if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen().then(() => {
-          btnToggleFullscreen.innerHTML = '⛶ Exit Full';
-          btnToggleFullscreen.classList.add('active');
-        }).catch(err => {
-          console.warn('Fullscreen request failed:', err);
-        });
-      } else {
-        document.exitFullscreen().then(() => {
-          btnToggleFullscreen.innerHTML = '⛶ Fullscreen';
-          btnToggleFullscreen.classList.remove('active');
-        }).catch(err => {
-          console.warn('Exit fullscreen failed:', err);
-        });
-      }
-    });
-
-    document.addEventListener('fullscreenchange', () => {
-      if (!document.fullscreenElement) {
-        btnToggleFullscreen.innerHTML = '⛶ Fullscreen';
-        btnToggleFullscreen.classList.remove('active');
-      } else {
-        btnToggleFullscreen.innerHTML = '⛶ Exit Full';
-        btnToggleFullscreen.classList.add('active');
-      }
-    });
-  }
-
-  // Sidebar collapse toggles
-  const btnTogglePalette = document.getElementById('btnTogglePalette');
-  const paletteEl = document.getElementById('builderPalette');
-  if (btnTogglePalette && paletteEl) {
-    btnTogglePalette.addEventListener('click', () => {
-      const isCollapsed = paletteEl.classList.toggle('collapsed');
-      btnTogglePalette.textContent = isCollapsed ? '▶' : '◀';
-      btnTogglePalette.title = isCollapsed ? 'Expand Component Library' : 'Collapse Component Library';
-      // Trigger resize for canvas if needed
-      window.dispatchEvent(new Event('resize'));
-    });
-  }
-
-  const btnToggleInspector = document.getElementById('btnToggleInspector');
-  const inspectorEl = document.getElementById('builderInspector');
-  if (btnToggleInspector && inspectorEl) {
-    btnToggleInspector.addEventListener('click', () => {
-      const isCollapsed = inspectorEl.classList.toggle('collapsed');
-      btnToggleInspector.textContent = isCollapsed ? '◀' : '▶';
-      btnToggleInspector.title = isCollapsed ? 'Expand Inspector' : 'Collapse Inspector';
-      window.dispatchEvent(new Event('resize'));
-    });
-  }
+  // Managed by flowsheet_builder.js for coordinated canvas expansion and panel collapse
 
   // =========================================================================
   // 3. TAG & OPC UA CONNECTION STUDIO MODAL
@@ -627,4 +574,10 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnSaveCustomTag) {
     btnSaveCustomTag.addEventListener('click', saveTagModal);
   }
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
+}

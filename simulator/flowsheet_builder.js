@@ -296,7 +296,7 @@
 
   function saveAutoFlowsheet() {
     try {
-      if (state.graph && Array.isArray(state.graph.components)) {
+      if (state.graph && Array.isArray(state.graph.components) && state.graph.components.length > 0) {
         localStorage.setItem('prosim_auto_flowsheet', JSON.stringify(state.graph));
       }
     } catch (e) {
@@ -505,20 +505,45 @@
   }
 
   async function loadSavedFlowsheet(fs) {
-    if (fs.components) {
+    if (fs.components && fs.components.length > 0) {
       loadGraph(fs);
       saveAutoFlowsheet();
       showToast(`Loaded saved flowsheet '${fs.name}' with block grid coordinates!`, 'success');
       renderFlowsheetsLibrary();
+      setTimeout(fitGraphToView, 50);
     } else if (fs.filename) {
       try {
         const res = await fetch(`/api/flowsheet/builder/load/${fs.filename}`);
         if (res.ok) {
           const data = await res.json();
-          loadGraph(data);
+          const targetGraph = (data.graph && (data.graph.components || data.graph.connections))
+            ? data.graph
+            : (data.flowsheet && (data.flowsheet.components || data.flowsheet.connections))
+              ? data.flowsheet
+              : (data.components ? data : (data.graph || data.flowsheet || data));
+
+          loadGraph(targetGraph);
+          if (data.telemetry || data.stream_table || data.audit) {
+            applyServerResults(data.telemetry, data.stream_table, data.audit);
+          }
           saveAutoFlowsheet();
-          showToast(`Loaded flowsheet '${data.name}' from server!`, 'success');
+
+          // Sync into localStorage cache if present
+          try {
+            let ufs = JSON.parse(localStorage.getItem('prosim_user_flowsheets') || '[]');
+            const idx = ufs.findIndex(u => u.name === fs.name || u.id === fs.id || u.filename === fs.filename);
+            if (idx >= 0) {
+              ufs[idx] = { ...ufs[idx], ...targetGraph };
+              localStorage.setItem('prosim_user_flowsheets', JSON.stringify(ufs));
+            }
+          } catch (e) {}
+
+          const dispName = targetGraph.name || data.name || fs.name;
+          showToast(`Loaded flowsheet '${dispName}' from server!`, 'success');
           renderFlowsheetsLibrary();
+          setTimeout(fitGraphToView, 50);
+        } else {
+          showToast(`Failed loading flowsheet: HTTP ${res.status}`, 'error');
         }
       } catch (err) {
         showToast(`Failed loading flowsheet: ${err.message}`, 'error');
@@ -597,11 +622,23 @@
 
   function loadGraph(graphData, preserveSelection = false) {
     if (!graphData) return;
+    const actualData = (graphData.graph && (graphData.graph.components || graphData.graph.connections))
+      ? graphData.graph
+      : (graphData.flowsheet && (graphData.flowsheet.components || graphData.flowsheet.connections))
+        ? graphData.flowsheet
+        : graphData;
+
     const prevBlock = preserveSelection ? state.selectedBlockId : null;
     const prevStream = preserveSelection ? state.selectedStreamId : null;
-    state.graph = JSON.parse(JSON.stringify(graphData));
+    state.graph = JSON.parse(JSON.stringify(actualData));
     state.graph.components = state.graph.components || [];
     state.graph.connections = state.graph.connections || [];
+    if (!state.graph.name && graphData.name) {
+      state.graph.name = graphData.name;
+    }
+    if (!state.graph.flowsheet_id && graphData.flowsheet_id) {
+      state.graph.flowsheet_id = graphData.flowsheet_id;
+    }
     state.selectedBlockId = prevBlock;
     state.selectedStreamId = prevStream;
 
@@ -649,6 +686,9 @@
       renderGlobalInspector();
     }
     updateLiveMassAudit();
+    if (!preserveSelection) {
+      setTimeout(fitGraphToView, 50);
+    }
   }
 
   async function loadTemplate(templateId) {
@@ -657,8 +697,15 @@
       const res = await fetch(`/api/flowsheet/builder/template/${templateId}`);
       if (res.ok) {
         const data = await res.json();
-        loadGraph(data);
-        showToast(`Template '${data.name}' loaded successfully!`, 'success');
+        const targetGraph = (data.graph && (data.graph.components || data.graph.connections))
+          ? data.graph
+          : (data.flowsheet && (data.flowsheet.components || data.flowsheet.connections))
+            ? data.flowsheet
+            : data;
+        loadGraph(targetGraph);
+        const name = targetGraph.name || data.name || templateId;
+        showToast(`Template '${name}' loaded successfully!`, 'success');
+        setTimeout(fitGraphToView, 50);
       }
     } catch (err) {
       showToast(`Error loading template: ${err.message}`, 'error');
@@ -2044,26 +2091,13 @@
     // 5. Deploy to OPC UA
     if (dom.btnDeploy) dom.btnDeploy.addEventListener('click', deployToOpcUa);
 
-    // 6. Save Flowsheet
+    // 6. Save Flowsheet in place
     if (dom.btnSave) dom.btnSave.addEventListener('click', saveFlowsheet);
+    const btnSaveAsTop = document.getElementById('btnBuilderSaveAs');
+    if (btnSaveAsTop) btnSaveAsTop.addEventListener('click', saveAsFlowsheet);
 
-    // 7. New Flowsheet
-    if (dom.btnNew) {
-      dom.btnNew.addEventListener('click', () => {
-        if (confirm('Create a new blank flowsheet? Unsaved changes will be discarded.')) {
-          state.graph = {
-            flowsheet_id: 'new_flowsheet',
-            name: 'New Custom Flowsheet',
-            version: '2.0',
-            description: '',
-            components: [],
-            connections: [],
-          };
-          loadGraph(state.graph);
-          showToast('New flowsheet created', 'info');
-        }
-      });
-    }
+    // 7. Blank Flowsheet
+    if (dom.btnNew) dom.btnNew.addEventListener('click', createBlankFlowsheet);
 
     // 8. Export JSON
     if (dom.btnExportJson) {
@@ -2181,38 +2215,11 @@
 
     // 14. Left Flowsheet Library Panel Actions
     if (dom.btnSaveFlowsheet) dom.btnSaveFlowsheet.addEventListener('click', saveFlowsheet);
+    const btnSaveAsPal = document.getElementById('btnSaveAsFlowsheet');
+    if (btnSaveAsPal) btnSaveAsPal.addEventListener('click', saveAsFlowsheet);
 
-    if (dom.btnNewFlowsheet) {
-      dom.btnNewFlowsheet.addEventListener('click', () => {
-        if (confirm('Create a new blank flowsheet? Unsaved changes will be discarded.')) {
-          state.graph = {
-            flowsheet_id: 'new_flowsheet',
-            name: 'New Custom Flowsheet',
-            version: '2.0',
-            description: '',
-            components: [],
-            connections: [],
-          };
-          loadGraph(state.graph);
-          saveAutoFlowsheet();
-          renderFlowsheetsLibrary();
-          showToast('Created new blank flowsheet', 'info');
-        }
-      });
-    }
-
-    if (dom.btnExportFlowsheet) {
-      dom.btnExportFlowsheet.addEventListener('click', () => {
-        const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(state.graph, null, 2));
-        const a = document.createElement('a');
-        a.href = dataStr;
-        a.download = `${state.graph.flowsheet_id || 'flowsheet'}.json`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        showToast('Exported flowsheet JSON with block positions', 'success');
-      });
-    }
+    if (dom.btnNewFlowsheet) dom.btnNewFlowsheet.addEventListener('click', createBlankFlowsheet);
+    if (dom.btnExportFlowsheet) dom.btnExportFlowsheet.addEventListener('click', exportFlowsheet);
 
     if (dom.btnImportFlowsheet && dom.fileImportFlowsheet) {
       dom.btnImportFlowsheet.addEventListener('click', () => dom.fileImportFlowsheet.click());
@@ -2236,26 +2243,44 @@
     }
 
     // 15. Panel Collapse Toggles
+    window.togglePaletteSidebar = function (e) {
+      if (e && e.stopPropagation) e.stopPropagation();
+      const pal = document.getElementById('builderPalette');
+      const btn = document.getElementById('btnTogglePalette');
+      if (pal) {
+        const isCollapsed = pal.classList.toggle('collapsed');
+        if (btn) {
+          btn.textContent = isCollapsed ? '▶' : '◀';
+          btn.title = isCollapsed ? 'Expand Component Library' : 'Collapse Component Library';
+        }
+        window.dispatchEvent(new Event('resize'));
+      }
+      return false;
+    };
+
+    window.toggleInspectorSidebar = function (e) {
+      if (e && e.stopPropagation) e.stopPropagation();
+      const insp = document.getElementById('builderInspector');
+      const btn = document.getElementById('btnToggleInspector');
+      if (insp) {
+        const isCollapsed = insp.classList.toggle('collapsed');
+        if (btn) {
+          btn.textContent = isCollapsed ? '◀' : '▶';
+          btn.title = isCollapsed ? 'Expand Inspector' : 'Collapse Inspector';
+        }
+        window.dispatchEvent(new Event('resize'));
+      }
+      return false;
+    };
+
     const btnTogglePal = document.getElementById('btnTogglePalette');
     if (btnTogglePal) {
-      btnTogglePal.addEventListener('click', () => {
-        const pal = document.getElementById('builderPalette');
-        if (pal) {
-          const isCollapsed = pal.classList.toggle('collapsed');
-          btnTogglePal.textContent = isCollapsed ? '▶' : '◀';
-        }
-      });
+      btnTogglePal.onclick = window.togglePaletteSidebar;
     }
 
     const btnToggleInsp = document.getElementById('btnToggleInspector');
     if (btnToggleInsp) {
-      btnToggleInsp.addEventListener('click', () => {
-        const insp = document.getElementById('builderInspector');
-        if (insp) {
-          const isCollapsed = insp.classList.toggle('collapsed');
-          btnToggleInsp.textContent = isCollapsed ? '◀' : '▶';
-        }
-      });
+      btnToggleInsp.onclick = window.toggleInspectorSidebar;
     }
   }
 
@@ -2288,6 +2313,14 @@
   async function solveSteadyState() {
     if (dom.btnSolve) dom.btnSolve.innerHTML = '⏳ Solving...';
     try {
+      // 1. Snapshot exact block coordinates on client canvas before solve
+      const clientPositions = {};
+      (state.graph.components || []).forEach(b => {
+        if (b && b.id && b.position) {
+          clientPositions[b.id] = { x: b.position.x, y: b.position.y };
+        }
+      });
+
       const res = await fetch('/api/flowsheet/builder/solve', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2296,14 +2329,40 @@
 
       if (res.ok) {
         const data = await res.json();
-        if (data.status === 'success' && data.graph) {
-          // Update graph with solved states
-          loadGraph(data.graph, true);
-          if (data.solve_result && data.solve_result.audit) {
+        if (data.status === 'success') {
+          // 2. Restore client block positions onto incoming graph blocks
+          if (data.graph && Array.isArray(data.graph.components)) {
+            data.graph.components.forEach(b => {
+              if (clientPositions[b.id]) {
+                b.position = { ...clientPositions[b.id] };
+              }
+            });
+            loadGraph(data.graph, true);
+          }
+
+          // 3. Double-lock current canvas positions so blocks NEVER jump
+          (state.graph.components || []).forEach(b => {
+            if (clientPositions[b.id]) {
+              b.position = { ...clientPositions[b.id] };
+            }
+          });
+
+          // 4. Update solved process telemetry, streams, and conservation audits
+          if (data.telemetry || data.stream_table || (data.solve_result && data.solve_result.audit)) {
+            applyServerResults(
+              data.telemetry,
+              data.stream_table,
+              (data.solve_result ? data.solve_result.audit : data.audit)
+            );
+          } else if (data.solve_result && data.solve_result.audit) {
             updateAuditDisplays(data.solve_result.audit);
           }
-          const iter = data.solve_result.iterations || 1;
-          const closure = data.solve_result.audit ? data.solve_result.audit.mass_closure_pct : 100;
+
+          renderGraph();
+          saveAutoFlowsheet();
+
+          const iter = (data.solve_result && data.solve_result.iterations) || 1;
+          const closure = (data.solve_result && data.solve_result.audit) ? data.solve_result.audit.mass_closure_pct : 100;
           showToast(`Steady-state converged in ${iter} iterations! Mass closure: ${closure}%`, 'success');
         } else {
           showToast(`Solve error: ${data.message || 'Unknown error'}`, 'error');
@@ -2438,30 +2497,70 @@
     }
   }
 
-  async function saveFlowsheet() {
-    const currentName = state.graph.name || 'My Plant Flowsheet';
-    const name = prompt('Enter a name for this flowsheet (all block grid positions will be preserved):', currentName);
-    if (!name || !name.trim()) return;
+  // 1. Create a Blank Flowsheet immediately without blocking confirm
+  function createBlankFlowsheet(e) {
+    if (e && e.preventDefault) e.preventDefault();
 
-    state.graph.name = name.trim();
-    const safeId = name.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
+    state.graph = {
+      flowsheet_id: 'new_flowsheet',
+      name: 'New Custom Flowsheet',
+      version: '2.0',
+      description: 'Blank user flowsheet',
+      components: [],
+      connections: [],
+    };
+
+    state.selectedBlockId = null;
+    state.selectedStreamId = null;
+    state.hoveredPort = null;
+    state.connectingFrom = null;
+
+    loadGraph(state.graph);
+    saveAutoFlowsheet();
+    renderInspectorOverview();
+    renderFlowsheetsLibrary();
+
+    if (dom.kpiMassIn) dom.kpiMassIn.textContent = '0.0 t/h';
+    if (dom.kpiMassOut) dom.kpiMassOut.textContent = '0.0 t/h';
+    if (dom.kpiClosure) {
+      dom.kpiClosure.textContent = '100.0%';
+      dom.kpiClosure.className = 'val green';
+    }
+    if (dom.kpiFuelPower) dom.kpiFuelPower.textContent = '0.0 MW';
+
+    showToast('Created new blank flowsheet. Drag equipment from the palette to begin!', 'info');
+  }
+
+  // 2. Save Current Flowsheet in place under the same name/id
+  async function saveFlowsheet(e) {
+    if (e && e.preventDefault) e.preventDefault();
+
+    const currentName = (state.graph && state.graph.name && state.graph.name.trim())
+      ? state.graph.name.trim()
+      : 'Plant Flowsheet';
+
+    let safeId = (state.graph && state.graph.flowsheet_id && state.graph.flowsheet_id.trim())
+      ? state.graph.flowsheet_id.trim()
+      : currentName.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+
+    state.graph.name = currentName;
     state.graph.flowsheet_id = safeId;
 
     // Snapshot complete graph with exact coordinates
     const flowsheetData = JSON.parse(JSON.stringify(state.graph));
 
-    // 1. Save to user saved list in localStorage
+    // 1. Save to user saved list in localStorage (update existing or prepend)
     try {
       let userFlowsheets = JSON.parse(localStorage.getItem('prosim_user_flowsheets') || '[]');
-      const existingIdx = userFlowsheets.findIndex(u => u.name === name.trim() || u.id === safeId);
+      const existingIdx = userFlowsheets.findIndex(u => u.id === safeId || u.flowsheet_id === safeId || u.name === currentName);
       if (existingIdx >= 0) {
         userFlowsheets[existingIdx] = flowsheetData;
       } else {
         userFlowsheets.unshift(flowsheetData);
       }
       localStorage.setItem('prosim_user_flowsheets', JSON.stringify(userFlowsheets));
-    } catch (e) {
-      console.warn('LocalStorage save error:', e);
+    } catch (err) {
+      console.warn('LocalStorage save error:', err);
     }
 
     // 2. Persist to auto-save slot
@@ -2475,27 +2574,277 @@
         body: JSON.stringify({ filename: safeId, flowsheet: flowsheetData }),
       });
       if (res.ok) {
-        showToast(`Flowsheet '${name}' saved! All block coordinates preserved.`, 'success');
+        showToast(`Saved flowsheet '${currentName}' in place! All block coordinates preserved.`, 'success');
       } else {
-        showToast(`Flowsheet '${name}' saved locally!`, 'success');
+        showToast(`Saved flowsheet '${currentName}' locally!`, 'success');
       }
     } catch (err) {
-      showToast(`Flowsheet '${name}' saved locally!`, 'success');
+      showToast(`Saved flowsheet '${currentName}' locally!`, 'success');
     }
 
     await renderFlowsheetsLibrary();
   }
 
-  // Expose global interface for integration with app.js
+  // 3. Save As a New Flowsheet (opens in-app modal instead of fragile browser prompt)
+  function saveAsFlowsheet(e) {
+    if (e && e.preventDefault) e.preventDefault();
+
+    const currentName = (state.graph && state.graph.name && state.graph.name.trim())
+      ? state.graph.name.trim()
+      : 'Plant Flowsheet';
+
+    const modal = document.getElementById('modalSaveAsFlowsheet');
+    const input = document.getElementById('saveAsInputName');
+
+    if (input) {
+      input.value = currentName.includes('(Copy)') ? currentName : `${currentName} (Copy)`;
+      input.onkeydown = function (evt) {
+        if (evt.key === 'Enter') {
+          evt.preventDefault();
+          confirmSaveAsModal();
+        } else if (evt.key === 'Escape') {
+          evt.preventDefault();
+          closeSaveAsModal();
+        }
+      };
+    }
+
+    if (modal) {
+      modal.classList.add('open');
+      setTimeout(() => {
+        if (input) {
+          input.focus();
+          input.select();
+        }
+      }, 50);
+    }
+  }
+
+  function closeSaveAsModal(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const modal = document.getElementById('modalSaveAsFlowsheet');
+    if (modal) modal.classList.remove('open');
+  }
+
+  async function confirmSaveAsModal() {
+    const input = document.getElementById('saveAsInputName');
+    const newName = input && input.value ? input.value.trim() : '';
+
+    if (!newName) {
+      showToast('Please enter a valid flowsheet name', 'error');
+      if (input) input.focus();
+      return;
+    }
+
+    closeSaveAsModal();
+
+    const newId = newName.toLowerCase().replace(/[^a-z0-9_]/g, '_') + '_' + Date.now().toString(36).slice(-4);
+    state.graph.name = newName;
+    state.graph.flowsheet_id = newId;
+
+    // Snapshot complete graph with exact coordinates
+    const flowsheetData = JSON.parse(JSON.stringify(state.graph));
+
+    // 1. Prepend as new item in localStorage
+    try {
+      let userFlowsheets = JSON.parse(localStorage.getItem('prosim_user_flowsheets') || '[]');
+      userFlowsheets.unshift(flowsheetData);
+      localStorage.setItem('prosim_user_flowsheets', JSON.stringify(userFlowsheets));
+    } catch (err) {
+      console.warn('LocalStorage save error:', err);
+    }
+
+    // 2. Persist to auto-save slot
+    saveAutoFlowsheet();
+
+    // 3. Save to server backend
+    try {
+      const res = await fetch('/api/flowsheet/builder/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename: newId, flowsheet: flowsheetData }),
+      });
+      if (res.ok) {
+        showToast(`Saved as new flowsheet '${newName}'!`, 'success');
+      } else {
+        showToast(`Saved '${newName}' locally!`, 'success');
+      }
+    } catch (err) {
+      showToast(`Saved '${newName}' locally!`, 'success');
+    }
+
+    await renderFlowsheetsLibrary();
+  }
+
+  // 4. Export JSON
+  function exportFlowsheet(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(state.graph, null, 2));
+    const a = document.createElement('a');
+    a.href = dataStr;
+    a.download = `${state.graph.flowsheet_id || 'flowsheet'}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    showToast('Exported flowsheet JSON with block positions', 'success');
+  }
+
+  // 5. Import JSON
+  function importFlowsheet(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const input = document.getElementById('fileImportFlowsheet') || (dom && dom.fileImportFlowsheet) || (dom && dom.importFileInput);
+    if (input) input.click();
+  }
+
+  // 6. Fullscreen & Canvas Maximization Toggle
+  let isFullscreenActive = false;
+
+  function toggleFullscreen(e) {
+    if (e) {
+      if (e.preventDefault) e.preventDefault();
+      if (e.stopPropagation) e.stopPropagation();
+    }
+
+    const doc = document;
+    const body = document.body;
+    const btn = document.getElementById('btnToggleFullscreen');
+    const pal = document.getElementById('builderPalette');
+    const insp = document.getElementById('builderInspector');
+    const btnPal = document.getElementById('btnTogglePalette');
+    const btnInsp = document.getElementById('btnToggleInspector');
+
+    const isNativeFull = !!(
+      doc.fullscreenElement ||
+      doc.webkitFullscreenElement ||
+      doc.mozFullScreenElement ||
+      doc.msFullscreenElement
+    );
+    const isCurrentlyFull = isNativeFull || body.classList.contains('app-fullscreen') || isFullscreenActive;
+
+    if (isCurrentlyFull) {
+      // ===== EXIT FULLSCREEN =====
+      isFullscreenActive = false;
+      body.classList.remove('app-fullscreen');
+
+      if (isNativeFull) {
+        const exitFn = doc.exitFullscreen || doc.webkitExitFullscreen || doc.mozCancelFullScreen || doc.msExitFullscreen;
+        if (exitFn) {
+          try { exitFn.call(doc).catch(() => {}); } catch (_) {}
+        }
+      }
+
+      // Restore sidebars
+      if (pal) pal.classList.remove('collapsed');
+      if (insp) insp.classList.remove('collapsed');
+      if (btnPal) { btnPal.textContent = '◀'; btnPal.title = 'Collapse Sidebar'; }
+      if (btnInsp) { btnInsp.textContent = '▶'; btnInsp.title = 'Collapse Inspector'; }
+
+      if (btn) {
+        btn.innerHTML = '⛶ Fullscreen';
+        btn.classList.remove('active');
+      }
+
+      setTimeout(() => {
+        window.dispatchEvent(new Event('resize'));
+        fitGraphToView();
+      }, 60);
+
+      showToast('Restored standard workspace', 'info');
+    } else {
+      // ===== ENTER FULLSCREEN =====
+      isFullscreenActive = true;
+      body.classList.add('app-fullscreen');
+
+      // Request native OS fullscreen
+      const docEl = doc.documentElement;
+      const reqFn = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.mozRequestFullScreen || docEl.msRequestFullscreen;
+      if (reqFn) {
+        try {
+          const p = reqFn.call(docEl);
+          if (p && typeof p.catch === 'function') {
+            p.catch(err => {
+              console.warn('Native fullscreen restricted by browser policy:', err);
+            });
+          }
+        } catch (err) {
+          console.warn('Native fullscreen call error:', err);
+        }
+      }
+
+      // Maximize flowsheet canvas by collapsing sidebars
+      if (pal) pal.classList.add('collapsed');
+      if (insp) insp.classList.add('collapsed');
+      if (btnPal) { btnPal.textContent = '▶'; btnPal.title = 'Expand Sidebar'; }
+      if (btnInsp) { btnInsp.textContent = '◀'; btnInsp.title = 'Expand Inspector'; }
+
+      if (btn) {
+        btn.innerHTML = '⛶ Exit Full';
+        btn.classList.add('active');
+      }
+
+      setTimeout(() => {
+        window.dispatchEvent(new Event('resize'));
+        fitGraphToView();
+      }, 60);
+
+      showToast('Fullscreen active — Flowsheet canvas maximized!', 'info');
+    }
+  }
+
+  // Handle browser native fullscreen change (e.g. Esc key pressed)
+  ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'].forEach(evt => {
+    document.addEventListener(evt, () => {
+      const isNative = !!(
+        document.fullscreenElement ||
+        document.webkitFullscreenElement ||
+        document.mozFullScreenElement ||
+        document.msFullscreenElement
+      );
+      if (!isNative && isFullscreenActive) {
+        toggleFullscreen();
+      }
+    });
+  });
+
+  // Expose global interface for direct button handlers & app.js
+  window.saveFlowsheet = saveFlowsheet;
+  window.saveCurrentFlowsheet = saveFlowsheet;
+  window.saveAsFlowsheet = saveAsFlowsheet;
+  window.closeSaveAsModal = closeSaveAsModal;
+  window.confirmSaveAsModal = confirmSaveAsModal;
+  window.createBlankFlowsheet = createBlankFlowsheet;
+  window.newFlowsheet = createBlankFlowsheet;
+  window.exportFlowsheet = exportFlowsheet;
+  window.importFlowsheet = importFlowsheet;
+  window.toggleFullscreen = toggleFullscreen;
+  window.fitGraphToView = fitGraphToView;
+  window.showToast = showToast;
+
   window.FlowsheetBuilder = {
     init,
     loadTemplate,
     loadGraph,
     getGraph: () => state.graph,
     solveSteadyState,
+    saveFlowsheet,
+    saveAsFlowsheet,
+    createBlankFlowsheet,
+    exportFlowsheet,
+    importFlowsheet,
+    toggleFullscreen,
+    fitGraphToView,
+    showToast,
   };
 
-  // Auto-init on DOMContentLoaded
+  // Keyboard shortcut: Ctrl+S / Cmd+S to save flowsheet in place
+  window.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+      e.preventDefault();
+      saveFlowsheet(e);
+    }
+  });
+
+  // Auto-init on DOMContentLoaded or immediately if DOM already loaded
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {

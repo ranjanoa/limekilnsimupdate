@@ -57,13 +57,19 @@ class ModularEngineManager:
         self.active_graph = FlowsheetGraph.from_dict(data, block_factory=get_block_class)
         self.solver = FlowsheetSolver(self.active_graph)
         res = self.solver.solve_steady_state()
-        logger.info(f"Loaded new flowsheet graph '{self.active_graph.name}' (Converged: {res['converged']})")
+        graph_dict = self.active_graph.to_dict()
         return {
             "status": "success",
             "flowsheet_id": self.active_graph.flowsheet_id,
             "name": self.active_graph.name,
             "solve_result": res,
-            "graph": self.active_graph.to_dict(),
+            "graph": graph_dict,
+            "flowsheet": graph_dict,
+            "components": graph_dict.get("components", []),
+            "connections": graph_dict.get("connections", []),
+            "telemetry": self.solver.get_blocks_telemetry(),
+            "stream_table": self.solver.get_stream_table(),
+            "audit": self.active_graph.audit_plant_conservation(),
         }
 
     def solve_graph_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
@@ -77,6 +83,9 @@ class ModularEngineManager:
             "status": "success",
             "solve_result": res,
             "graph": temp_graph.to_dict(),
+            "telemetry": temp_solver.get_blocks_telemetry(),
+            "stream_table": temp_solver.get_stream_table(),
+            "audit": temp_graph.audit_plant_conservation(),
         }
 
     def update_block_parameter(self, block_id: str, param_name: str, value: Any) -> Dict[str, Any]:

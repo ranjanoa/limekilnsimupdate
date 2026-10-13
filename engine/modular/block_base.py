@@ -254,10 +254,13 @@ class BlockBase(ABC):
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "BlockBase":
         """Instantiates and configures block from dictionary."""
+        pos = data.get("position")
+        if not pos or not isinstance(pos, dict):
+            pos = {"x": 100.0, "y": 100.0}
         inst = cls(
             block_id=data.get("id", data.get("block_id", "BLOCK_01")),
             name=data.get("name", ""),
-            position=data.get("position", {"x": 100, "y": 100}),
+            position={"x": float(pos.get("x", 100)), "y": float(pos.get("y", 100))},
             parameters=data.get("parameters", {}),
         )
         if "state" in data:

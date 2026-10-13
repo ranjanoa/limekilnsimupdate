@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=4.2">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
 </head>
 <body class="prosim-app">
@@ -39,12 +39,13 @@
       <div class="tier-right">
         <!-- File & Project Actions -->
         <div class="file-actions-group">
-          <button id="btnBuilderSave" class="hdr-btn" title="Save Flowsheet to Server">💾 Save</button>
-          <button id="btnBuilderExportJson" class="hdr-btn" title="Export Flowsheet JSON">⬇ JSON</button>
-          <button id="btnBuilderImportJson" class="hdr-btn" title="Import Flowsheet JSON">⬆ Import</button>
+          <button id="btnBuilderSave" class="hdr-btn" title="Save Flowsheet in place (Ctrl+S)" onclick="saveFlowsheet(event)">💾 Save</button>
+          <button id="btnBuilderSaveAs" class="hdr-btn" title="Save Flowsheet As New Layout..." onclick="saveAsFlowsheet(event)">💾 Save As</button>
+          <button id="btnBuilderExportJson" class="hdr-btn" title="Export Flowsheet JSON" onclick="exportFlowsheet(event)">⬇ JSON</button>
+          <button id="btnBuilderImportJson" class="hdr-btn" title="Import Flowsheet JSON" onclick="importFlowsheet(event)">⬆ Import</button>
           <input type="file" id="builderImportFileInput" accept=".json" style="display:none;">
           <button id="btnBuilderExportCsv" class="hdr-btn" title="Export Stream Table CSV">📊 CSV</button>
-          <button id="btnToggleFullscreen" class="hdr-btn btn-fs-toggle" title="Toggle Edge-to-Edge Fullscreen">⛶ Fullscreen</button>
+          <button id="btnToggleFullscreen" class="hdr-btn btn-fs-toggle" title="Toggle Edge-to-Edge Fullscreen" onclick="toggleFullscreen(event)">⛶ Fullscreen</button>
         </div>
 
         <div class="tier-divider"></div>
@@ -101,7 +102,7 @@
           <button id="btnBuilderRunSim" class="hdr-btn btn-sim-run" title="Run / Pause Real-time Dynamic Simulation">▶ Run Sim</button>
           <button id="btnBuilderSolve" class="hdr-btn btn-sim-solve" title="Solve Steady-State Mass & Energy Balances">⚡ Solve Balances</button>
           <button id="btnReset" class="hdr-btn btn-sim-reset" title="Reset Flowsheet to 280 tph Nominal Steady State">↺ Reset</button>
-          <button id="btnBuilderNew" class="hdr-btn" title="Create New Blank Flowsheet">📄 New</button>
+          <button id="btnBuilderNew" class="hdr-btn" title="Create New Blank Flowsheet" onclick="createBlankFlowsheet(event)">📄 Blank</button>
         </div>
       </div>
 
@@ -160,7 +161,7 @@
             <h4>PROSIM WORKSPACE</h4>
             <span class="palette-subtitle">Flowsheets & Library</span>
           </div>
-          <button id="btnTogglePalette" class="panel-collapse-btn" title="Collapse Sidebar">◀</button>
+          <button id="btnTogglePalette" class="panel-collapse-btn" title="Collapse Sidebar" onclick="togglePaletteSidebar(event)">◀</button>
         </div>
 
         <!-- Section 1: Collapsible Flowsheets Library -->
@@ -175,10 +176,11 @@
           <div class="palette-accordion-body" id="accBodyFlowsheets">
             <!-- Flowsheet Management Actions -->
             <div class="flowsheet-actions-row">
-              <button class="fs-act-btn" id="btnSaveFlowsheet" title="Save current flowsheet layout & block positions">💾 Save</button>
-              <button class="fs-act-btn" id="btnNewFlowsheet" title="Create a new blank flowsheet">➕ Blank</button>
-              <button class="fs-act-btn" id="btnExportFlowsheet" title="Export flowsheet as JSON file">📤 Export</button>
-              <button class="fs-act-btn" id="btnImportFlowsheet" title="Import flowsheet from JSON file">📥 Import</button>
+              <button class="fs-act-btn" id="btnSaveFlowsheet" title="Save current flowsheet layout" onclick="saveFlowsheet(event)">💾 Save</button>
+              <button class="fs-act-btn" id="btnSaveAsFlowsheet" title="Save as a new flowsheet name" onclick="saveAsFlowsheet(event)">💾 As</button>
+              <button class="fs-act-btn" id="btnNewFlowsheet" title="Create a new blank flowsheet" onclick="createBlankFlowsheet(event)">➕ Blank</button>
+              <button class="fs-act-btn" id="btnExportFlowsheet" title="Export flowsheet as JSON file" onclick="exportFlowsheet(event)">📤 Export</button>
+              <button class="fs-act-btn" id="btnImportFlowsheet" title="Import flowsheet from JSON file" onclick="importFlowsheet(event)">📥 Import</button>
               <input type="file" id="fileImportFlowsheet" accept=".json" style="display: none;">
             </div>
             <!-- Grid Snap & Position Controls -->
@@ -266,7 +268,7 @@
       <div class="builder-inspector" id="builderInspector">
         <div class="inspector-header">
           <h4 id="builderInspectorTitle">Flowsheet Overview</h4>
-          <button id="btnToggleInspector" class="panel-collapse-btn" title="Collapse Inspector Sidebar">▶</button>
+          <button id="btnToggleInspector" class="panel-collapse-btn" title="Collapse Inspector Sidebar" onclick="toggleInspectorSidebar(event)">▶</button>
         </div>
         <div class="inspector-body" id="builderInspectorBody">
           <!-- Dynamically populated based on selection -->
@@ -494,8 +496,31 @@
     </div>
   </div>
 
+  <!-- MODAL: SAVE FLOWSHEET AS -->
+  <div class="modal-backdrop" id="modalSaveAsFlowsheet" style="z-index: 1050;">
+    <div class="modal-dialog" style="max-width: 480px; width: 100%; background: #0F172A; border: 1px solid #38BDF8; box-shadow: 0 10px 30px rgba(0,0,0,0.8), 0 0 20px rgba(56,189,248,0.25);">
+      <div class="modal-header" style="border-bottom: 1px solid #1E293B; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center;">
+        <div class="modal-title-with-badge">
+          <h4 style="color: #38BDF8; font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px;">💾 Save Flowsheet As...</h4>
+        </div>
+        <button type="button" class="modal-close" id="btnCloseSaveAsModal" onclick="closeSaveAsModal()">×</button>
+      </div>
+      <div class="modal-body" style="padding: 16px;">
+        <p style="color: #94A3B8; font-size: 12px; margin-bottom: 14px; line-height: 1.5;">Enter a name for the new flowsheet layout. All equipment block positions and process streams will be saved under this new flowsheet without modifying the original.</p>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <label style="font-size: 11px; font-weight: 600; color: #CBD5E1;">Flowsheet Name:</label>
+          <input type="text" id="saveAsInputName" class="cfg-input" style="width: 100%; padding: 8px 12px; font-size: 13px; background: #1E293B; border: 1px solid #475569; color: #FFF; border-radius: 4px; outline: none;" placeholder="e.g. Kiln 3 Modified Layout">
+        </div>
+        <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; border-top: 1px solid #1E293B; padding-top: 12px;">
+          <button type="button" class="btn btn-secondary" onclick="closeSaveAsModal()">Cancel</button>
+          <button type="button" class="btn btn-primary" id="btnConfirmSaveAs" onclick="confirmSaveAsModal()" style="background: #0284C7; border: 1px solid #38BDF8; color: #FFF; padding: 6px 16px; font-weight: 600; border-radius: 4px; cursor: pointer;">Save New Flowsheet</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- APPLICATION SCRIPTS -->
-  <script src="app.js"></script>
-  <script src="flowsheet_builder.js"></script>
+  <script src="app.js?v=4.2"></script>
+  <script src="flowsheet_builder.js?v=4.2"></script>
 </body>
 </html>

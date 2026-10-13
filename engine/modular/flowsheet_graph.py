@@ -415,6 +415,11 @@ class FlowsheetGraph:
         """
         Reconstructs a flowsheet graph from dictionary using a block factory function/registry.
         """
+        if "flowsheet" in data and isinstance(data["flowsheet"], dict) and "components" in data["flowsheet"]:
+            data = data["flowsheet"]
+        elif "graph" in data and isinstance(data["graph"], dict) and "components" in data["graph"]:
+            data = data["graph"]
+
         graph = cls(
             flowsheet_id=data.get("flowsheet_id", "custom_flowsheet"),
             name=data.get("name", "Custom Flowsheet"),

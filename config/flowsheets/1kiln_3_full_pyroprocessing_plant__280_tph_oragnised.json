@@ -1,0 +1,4441 @@
+{
+  "status": "success",
+  "flowsheet_id": "1kiln_3_full_pyroprocessing_plant__280_tph_oragnised",
+  "name": "1Kiln 3 Full Pyroprocessing Plant (280 TPH)oragnised",
+  "solve_result": {
+    "converged": true,
+    "iterations": 32,
+    "max_residual": 9.8e-05,
+    "tear_streams_count": 7,
+    "execution_order": [
+      "FEED_01",
+      "CYC_01",
+      "CYC_02",
+      "CYC_03",
+      "CYC_04",
+      "FUEL_KILN",
+      "FUEL_PC",
+      "CALC_01",
+      "CYC_05",
+      "ID_FAN_01",
+      "KILN_01",
+      "COOLER_01",
+      "SILO_CLINKER"
+    ],
+    "audit": {
+      "mass_in_tph": 647.7,
+      "mass_out_tph": 647.7,
+      "mass_err_tph": 0,
+      "mass_closure_pct": 100,
+      "heat_in_gjh": 650.73,
+      "heat_out_gjh": 289.08,
+      "heat_loss_gjh": 107.58
+    }
+  },
+  "graph": {
+    "flowsheet_id": "kiln_3_full_pyroprocessing_plant__280_tph_",
+    "name": "Kiln 3 Full Pyroprocessing Plant (280 TPH)",
+    "version": "2.0",
+    "description": "Complete 5-stage preheater, inline calciner, tertiary air duct, rotary kiln, and grate cooler.",
+    "components": [
+      {
+        "id": "FEED_01",
+        "name": "Raw Meal Feeder",
+        "type": "GravimetricFeeder",
+        "category": "Feeding",
+        "position": {
+          "x": 60,
+          "y": 60
+        },
+        "parameters": {
+          "nominal_rate_tph": 280,
+          "time_constant_s": 1.5,
+          "temperature_c": 60,
+          "moisture_pct": 0.8,
+          "caco3_pct": 76.85,
+          "mgco3_pct": 2.15,
+          "sio2_pct": 13.5,
+          "al2o3_pct": 3.45,
+          "fe2o3_pct": 2.1
+        },
+        "state": {
+          "actual_feed_rate_tph": 280,
+          "accumulated_tonnage_t": 0,
+          "feeder_status": "RUNNING",
+          "caco3_pct": 76.85,
+          "loi_pct": 34.91,
+          "lsf": 99.4,
+          "heat_loss_gjh": 0
+        },
+        "ports": {
+          "in_material": {
+            "name": "in_material",
+            "direction": "IN",
+            "phase": "SOLID",
+            "description": "Optional upstream silo feed",
+            "required": false,
+            "connected_stream_id": null
+          },
+          "out_solid": {
+            "name": "out_solid",
+            "direction": "OUT",
+            "phase": "SOLID",
+            "description": "Controlled raw meal flow",
+            "required": true,
+            "connected_stream_id": 1
+          }
+        }
+      },
+      {
+        "id": "CYC_01",
+        "name": "Preheater Cyclone C1 (Top)",
+        "type": "CycloneStage",
+        "category": "Separation",
+        "position": {
+          "x": 260,
+          "y": 60
+        },
+        "parameters": {
+          "stage_number": 1,
+          "separation_efficiency": 0.985,
+          "thermal_effectiveness": 0.85,
+          "dp_mbar": 5,
+          "heat_loss_pct": 1.5
+        },
+        "state": {
+          "gas_temp_c": 296.2,
+          "meal_temp_c": 519.9,
+          "pressure_drop_mbar": 5,
+          "heat_transferred_gjh": 109.36,
+          "heat_loss_gjh": 3.19,
+          "dust_carryover_tph": 4.2
+        },
+        "ports": {
+          "in_gas": {
+            "name": "in_gas",
+            "direction": "IN",
+            "phase": "GAS",
+            "description": "Rising hot flue gas from stage below",
+            "required": true,
+            "connected_stream_id": 14
+          },
+          "in_meal": {
+            "name": "in_meal",
+            "direction": "IN",
+            "phase": "SOLID",
+            "description": "Descending meal from stage above or feeder",
+            "required": true,
+            "connected_stream_id": 1
+          },
+          "out_gas": {
+            "name": "out_gas",
+            "direction": "OUT",
+            "phase": "GAS",
+            "description": "Cooled gas exiting to upper stage or ID fan",
+            "required": true,
+            "connected_stream_id": 15
+          },
+          "out_meal": {
+            "name": "out_meal",
+            "direction": "OUT",
+            "phase": "SOLID",
+            "description": "Preheated meal discharging from dipleg",
+            "required": true,
+            "connected_stream_id": 2
+          }
+        }
+      },
+      {
+        "id": "CYC_02",
+        "name": "Preheater Cyclone C2",
+        "type": "CycloneStage",
+        "category": "Separation",
+        "position": {
+          "x": 260,
+          "y": 180
+        },
+        "parameters": {
+          "stage_number": 2,
+          "separation_efficiency": 0.985,
+          "thermal_effectiveness": 0.82,
+          "dp_mbar": 5.5,
+          "heat_loss_pct": 1.5
+        },
+        "state": {
+          "gas_temp_c": 601.1,
+          "meal_temp_c": 697.5,
+          "pressure_drop_mbar": 5.5,
+          "heat_transferred_gjh": 46.33,
+          "heat_loss_gjh": 3.96,
+          "dust_carryover_tph": 4.14
+        },
+        "ports": {
+          "in_gas": {
+            "name": "in_gas",
+            "direction": "IN",
+            "phase": "GAS",
+            "description": "Rising hot flue gas from stage below",
+            "required": true,
+            "connected_stream_id": 13
+          },
+          "in_meal": {
+            "name": "in_meal",
+            "direction": "IN",
+            "phase": "SOLID",
+            "description": "Descending meal from stage above or feeder",
+            "required": true,
+            "connected_stream_id": 2
+          },
+          "out_gas": {
+            "name": "out_gas",
+            "direction": "OUT",
+            "phase": "GAS",
+            "description": "Cooled gas exiting to upper stage or ID fan",
+            "required": true,
+            "connected_stream_id": 14
+          },
+          "out_meal": {
+            "name": "out_meal",
+            "direction": "OUT",
+            "phase": "SOLID",
+            "description": "Preheated meal discharging from dipleg",
+            "required": true,
+            "connected_stream_id": 3
+          }
+        }
+      },
+      {
+        "id": "CYC_03",
+        "name": "Preheater Cyclone C3",
+        "type": "CycloneStage",
+        "category": "Separation",
+        "position": {
+          "x": 260,
+          "y": 300
+        },
+        "parameters": {
+          "stage_number": 3,
+          "separation_efficiency": 0.985,
+          "thermal_effectiveness": 0.8,
+          "dp_mbar": 5.5,
+          "heat_loss_pct": 1.5
+        },
+        "state": {
+          "gas_temp_c": 736.5,
+          "meal_temp_c": 793.7,
+          "pressure_drop_mbar": 5.5,
+          "heat_transferred_gjh": 25.68,
+          "heat_loss_gjh": 4.41,
+          "dust_carryover_tph": 4.07
+        },
+        "ports": {
+          "in_gas": {
+            "name": "in_gas",
+            "direction": "IN",
+            "phase": "GAS",
+            "description": "Rising hot flue gas from stage below",
+            "required": true,
+            "connected_stream_id": 12
+          },
+          "in_meal": {
+            "name": "in_meal",
+            "direction": "IN",
+            "phase": "SOLID",
+            "description": "Descending meal from stage above or feeder",
+            "required": true,
+            "connected_stream_id": 3
+          },
+          "out_gas": {
+            "name": "out_gas",
+            "direction": "OUT",
+            "phase": "GAS",
+            "description": "Cooled gas exiting to upper stage or ID fan",
+            "required": true,
+            "connected_stream_id": 13
+          },
+          "out_meal": {
+            "name": "out_meal",
+            "direction": "OUT",
+            "phase": "SOLID",
+            "description": "Preheated meal discharging from dipleg",
+            "required": true,
+            "connected_stream_id": 4
+          }
+        }
+      },
+      {
+        "id": "CYC_04",
+        "name": "Preheater Cyclone C4",
+        "type": "CycloneStage",
+        "category": "Separation",
+        "position": {
+          "x": 260,
+          "y": 420
+        },
+        "parameters": {
+          "stage_number": 4,
+          "separation_efficiency": 0.985,
+          "thermal_effectiveness": 0.78,
+          "dp_mbar": 5.8,
+          "heat_loss_pct": 1.5
+        },
+        "state": {
+          "gas_temp_c": 817.7,
+          "meal_temp_c": 860.1,
+          "pressure_drop_mbar": 5.8,
+          "heat_transferred_gjh": 17.83,
+          "heat_loss_gjh": 4.73,
+          "dust_carryover_tph": 4.01
+        },
+        "ports": {
+          "in_gas": {
+            "name": "in_gas",
+            "direction": "IN",
+            "phase": "GAS",
+            "description": "Rising hot flue gas from stage below",
+            "required": true,
+            "connected_stream_id": 11
+          },
+          "in_meal": {
+            "name": "in_meal",
+            "direction": "IN",
+            "phase": "SOLID",
+            "description": "Descending meal from stage above or feeder",
+            "required": true,
+            "connected_stream_id": 4
+          },
+          "out_gas": {
+            "name": "out_gas",
+            "direction": "OUT",
+            "phase": "GAS",
+            "description": "Cooled gas exiting to upper stage or ID fan",
+            "required": true,
+            "connected_stream_id": 12
+          },
+          "out_meal": {
+            "name": "out_meal",
+            "direction": "OUT",
+            "phase": "SOLID",
+            "description": "Preheated meal discharging from dipleg",
+            "required": true,
+            "connected_stream_id": 5
+          }
+        }
+      },
+      {
+        "id": "CALC_01",
+        "name": "Inline Precalciner Reactor",
+        "type": "CalcinerReactor",
+        "category": "Combustion",
+        "position": {
+          "x": 480,
+          "y": 420
+        },
+        "parameters": {
+          "volume_m3": 1100,
+          "design_calcination_pct": 92.5,
+          "combustion_efficiency": 99,
+          "heat_loss_pct": 3.5,
+          "target_temp_c": 865
+        },
+        "state": {
+          "calciner_temp_c": 868.9,
+          "calcination_degree_pct": 91.2,
+          "co2_released_tph": 81.23,
+          "heat_input_mw": 90.75,
+          "heat_loss_gjh": 23.68,
+          "apparent_calcination_heat_gjh": 329.22
+        },
+        "ports": {
+          "in_meal": {
+            "name": "in_meal",
+            "direction": "IN",
+            "phase": "SOLID",
+            "description": "Preheated raw meal from stage 4",
+            "required": true,
+            "connected_stream_id": 5
+          },
+          "in_gas": {
+            "name": "in_gas",
+            "direction": "IN",
+            "phase": "GAS",
+            "description": "Kiln riser exhaust gas",
+            "required": false,
+            "connected_stream_id": 8
+          },
+          "in_tertiary_air": {
+            "name": "in_tertiary_air",
+            "direction": "IN",
+            "phase": "AIR",
+            "description": "Tertiary air from grate cooler",
+            "required": false,
+            "connected_stream_id": 7
+          },
+          "in_fuel": {
+            "name": "in_fuel",
+            "direction": "IN",
+            "phase": "FUEL",
+            "description": "Dosed fuel supply (petcoke / CDR)",
+            "required": true,
+            "connected_stream_id": 6
+          },
+          "out_gas": {
+            "name": "out_gas",
+            "direction": "OUT",
+            "phase": "GAS",
+            "description": "Calciner flue gas with released CO2",
+            "required": false,
+            "connected_stream_id": 9
+          },
+          "out_meal": {
+            "name": "out_meal",
+            "direction": "OUT",
+            "phase": "SOLID",
+            "description": "Decarbonated raw meal (90-95% CaO)",
+            "required": false,
+            "connected_stream_id": 10
+          },
+          "out_gas_meal_mix": {
+            "name": "out_gas_meal_mix",
+            "direction": "OUT",
+            "phase": "GAS",
+            "description": "Combined suspension to stage 5 cyclone",
+            "required": false,
+            "connected_stream_id": null
+          }
+        }
+      },
+      {
+        "id": "FUEL_PC",
+        "name": "Precalciner Fuel Dosing",
+        "type": "FuelFeeder",
+        "category": "Feeding",
+        "position": {
+          "x": 480,
+          "y": 570
+        },
+        "parameters": {
+          "fuel_name": "Petcoke & CDR",
+          "nominal_rate_tph": 12,
+          "lhv_mj_kg": 27.5,
+          "ash_pct": 0.8,
+          "moisture_pct": 1
+        },
+        "state": {
+          "actual_rate_tph": 12,
+          "heat_input_mw": 91.67,
+          "heat_input_gjh": 330,
+          "heat_loss_gjh": 0
+        },
+        "ports": {
+          "out_fuel": {
+            "name": "out_fuel",
+            "direction": "OUT",
+            "phase": "FUEL",
+            "description": "Dosed fuel supply to burner/calciner",
+            "required": true,
+            "connected_stream_id": 6
+          }
+        }
+      },
+      {
+        "id": "CYC_05",
+        "name": "Preheater Cyclone C5 (Bottom)",
+        "type": "CycloneStage",
+        "category": "Separation",
+        "position": {
+          "x": 680,
+          "y": 360
+        },
+        "parameters": {
+          "stage_number": 5,
+          "separation_efficiency": 0.985,
+          "thermal_effectiveness": 0.82,
+          "dp_mbar": 5,
+          "heat_loss_pct": 1.5
+        },
+        "state": {
+          "gas_temp_c": 878.9,
+          "meal_temp_c": 858.9,
+          "pressure_drop_mbar": 5,
+          "heat_transferred_gjh": 0,
+          "heat_loss_gjh": 4.62,
+          "dust_carryover_tph": 2.74
+        },
+        "ports": {
+          "in_gas": {
+            "name": "in_gas",
+            "direction": "IN",
+            "phase": "GAS",
+            "description": "Rising hot flue gas from stage below",
+            "required": true,
+            "connected_stream_id": 9
+          },
+          "in_meal": {
+            "name": "in_meal",
+            "direction": "IN",
+            "phase": "SOLID",
+            "description": "Descending meal from stage above or feeder",
+            "required": true,
+            "connected_stream_id": 10
+          },
+          "out_gas": {
+            "name": "out_gas",
+            "direction": "OUT",
+            "phase": "GAS",
+            "description": "Cooled gas exiting to upper stage or ID fan",
+            "required": true,
+            "connected_stream_id": 11
+          },
+          "out_meal": {
+            "name": "out_meal",
+            "direction": "OUT",
+            "phase": "SOLID",
+            "description": "Preheated meal discharging from dipleg",
+            "required": true,
+            "connected_stream_id": 16
+          }
+        }
+      },
+      {
+        "id": "KILN_01",
+        "name": "Rotary Kiln 3 (72m x 4.6m)",
+        "type": "RotaryKiln",
+        "category": "Pyroprocess",
+        "position": {
+          "x": 880,
+          "y": 480
+        },
+        "parameters": {
+          "length_m": 72,
+          "diameter_m": 4.6,
+          "slope_pct": 3.5,
+          "speed_rpm": 3.79,
+          "target_burning_zone_c": 1435,
+          "shell_heat_loss_mw": 14.8
+        },
+        "state": {
+          "burning_zone_temp_c": 1407.2,
+          "kiln_inlet_gas_temp_c": 1041.4,
+          "kiln_drive_torque_kwn": 182,
+          "bed_residence_time_min": 20.6,
+          "free_lime_pct": 1.96,
+          "c3s_pct": 58.2,
+          "clinker_rate_tph": 172.04,
+          "heat_loss_gjh": 53.28
+        },
+        "ports": {
+          "in_meal_calcined": {
+            "name": "in_meal_calcined",
+            "direction": "IN",
+            "phase": "SOLID",
+            "description": "Calcined hot meal from calciner/bottom cyclone",
+            "required": true,
+            "connected_stream_id": 16
+          },
+          "in_flame_fuel": {
+            "name": "in_flame_fuel",
+            "direction": "IN",
+            "phase": "FUEL",
+            "description": "Kiln main burner fuel (petcoke / alternative fuels)",
+            "required": true,
+            "connected_stream_id": 17
+          },
+          "in_secondary_air": {
+            "name": "in_secondary_air",
+            "direction": "IN",
+            "phase": "AIR",
+            "description": "Preheated secondary air from cooler hood",
+            "required": true,
+            "connected_stream_id": 18
+          },
+          "in_primary_air": {
+            "name": "in_primary_air",
+            "direction": "IN",
+            "phase": "AIR",
+            "description": "Burner primary momentum air",
+            "required": false,
+            "connected_stream_id": null
+          },
+          "out_clinker": {
+            "name": "out_clinker",
+            "direction": "OUT",
+            "phase": "SOLID",
+            "description": "Sintered hot clinker discharging into grate cooler",
+            "required": true,
+            "connected_stream_id": 19
+          },
+          "out_kiln_gas": {
+            "name": "out_kiln_gas",
+            "direction": "OUT",
+            "phase": "GAS",
+            "description": "Kiln exhaust flue gas discharging into calciner riser",
+            "required": true,
+            "connected_stream_id": 8
+          }
+        }
+      },
+      {
+        "id": "FUEL_KILN",
+        "name": "Kiln Main Burner Fuel",
+        "type": "FuelFeeder",
+        "category": "Feeding",
+        "position": {
+          "x": 1080,
+          "y": 620
+        },
+        "parameters": {
+          "fuel_name": "Petcoke Main",
+          "nominal_rate_tph": 7.2,
+          "lhv_mj_kg": 31.4,
+          "ash_pct": 0.8,
+          "moisture_pct": 1
+        },
+        "state": {
+          "actual_rate_tph": 7.2,
+          "heat_input_mw": 62.8,
+          "heat_input_gjh": 226.08,
+          "heat_loss_gjh": 0
+        },
+        "ports": {
+          "out_fuel": {
+            "name": "out_fuel",
+            "direction": "OUT",
+            "phase": "FUEL",
+            "description": "Dosed fuel supply to burner/calciner",
+            "required": true,
+            "connected_stream_id": 17
+          }
+        }
+      },
+      {
+        "id": "COOLER_01",
+        "name": "Hydraulic Grate Cooler",
+        "type": "GrateCooler",
+        "category": "Cooling",
+        "position": {
+          "x": 1080,
+          "y": 440
+        },
+        "parameters": {
+          "grate_area_m2": 105,
+          "cooling_air_total_tph": 348.5,
+          "secondary_air_split_pct": 24.2,
+          "tertiary_air_split_pct": 36.8,
+          "recuperation_efficiency": 0.74,
+          "clinker_target_temp_c": 95
+        },
+        "state": {
+          "secondary_air_temp_c": 925.8,
+          "tertiary_air_temp_c": 799.7,
+          "cooler_vent_temp_c": 231.6,
+          "clinker_exit_temp_c": 95,
+          "recuperated_heat_gjh": 179.66,
+          "cooler_hydraulic_press_bar": 92,
+          "heat_loss_gjh": 9.71
+        },
+        "ports": {
+          "in_clinker_hot": {
+            "name": "in_clinker_hot",
+            "direction": "IN",
+            "phase": "SOLID",
+            "description": "Hot clinker discharging from rotary kiln",
+            "required": true,
+            "connected_stream_id": 19
+          },
+          "in_cooling_air": {
+            "name": "in_cooling_air",
+            "direction": "IN",
+            "phase": "AIR",
+            "description": "Ambient cooling air from under-grate fans",
+            "required": false,
+            "connected_stream_id": null
+          },
+          "out_clinker_cool": {
+            "name": "out_clinker_cool",
+            "direction": "OUT",
+            "phase": "SOLID",
+            "description": "Cooled clinker discharged to pan conveyor & silo",
+            "required": true,
+            "connected_stream_id": 20
+          },
+          "out_secondary_air": {
+            "name": "out_secondary_air",
+            "direction": "OUT",
+            "phase": "AIR",
+            "description": "Hot secondary combustion air to kiln burner",
+            "required": true,
+            "connected_stream_id": 18
+          },
+          "out_tertiary_air": {
+            "name": "out_tertiary_air",
+            "direction": "OUT",
+            "phase": "AIR",
+            "description": "Hot tertiary combustion air to precalciner",
+            "required": true,
+            "connected_stream_id": 7
+          },
+          "out_vent_air": {
+            "name": "out_vent_air",
+            "direction": "OUT",
+            "phase": "AIR",
+            "description": "Excess cooling air to cooler baghouse filter",
+            "required": false,
+            "connected_stream_id": null
+          }
+        }
+      },
+      {
+        "id": "ID_FAN_01",
+        "name": "Main ID Process Fan",
+        "type": "IDFan",
+        "category": "Draft / Fans",
+        "position": {
+          "x": 80,
+          "y": 200
+        },
+        "parameters": {
+          "design_flow_nm3h": 350000,
+          "design_dp_mbar": 65,
+          "damper_pct": 82,
+          "motor_rated_kw": 2500,
+          "fan_efficiency": 0.78
+        },
+        "state": {
+          "actual_flow_nm3h": 253537.4,
+          "fan_dp_mbar": 45.48,
+          "motor_power_kw": 855.8,
+          "motor_current_a": 813.8,
+          "inlet_draft_mbar": -54.8,
+          "outlet_draft_mbar": -9.3,
+          "heat_loss_gjh": 0
+        },
+        "ports": {
+          "in_gas": {
+            "name": "in_gas",
+            "direction": "IN",
+            "phase": "GAS",
+            "description": "Flue gas suction from preheater top stage",
+            "required": true,
+            "connected_stream_id": 15
+          },
+          "out_gas": {
+            "name": "out_gas",
+            "direction": "OUT",
+            "phase": "GAS",
+            "description": "Exhaust gas discharge to baghouse / main stack",
+            "required": true,
+            "connected_stream_id": null
+          }
+        }
+      },
+      {
+        "id": "SILO_CLINKER",
+        "name": "Clinker Storage Dome",
+        "type": "SiloStorage",
+        "category": "Feeding",
+        "position": {
+          "x": 1260,
+          "y": 440
+        },
+        "parameters": {
+          "capacity_tons": 50000,
+          "initial_level_pct": 45
+        },
+        "state": {
+          "level_pct": 45,
+          "stored_tons": 22500,
+          "heat_loss_gjh": 0
+        },
+        "ports": {
+          "in_solid": {
+            "name": "in_solid",
+            "direction": "IN",
+            "phase": "SOLID",
+            "description": "Inlet material from elevator",
+            "required": true,
+            "connected_stream_id": 20
+          },
+          "out_solid": {
+            "name": "out_solid",
+            "direction": "OUT",
+            "phase": "SOLID",
+            "description": "Discharge to downstream process",
+            "required": true,
+            "connected_stream_id": null
+          }
+        }
+      }
+    ],
+    "connections": [
+      {
+        "stream_id": 1,
+        "name": "Raw Meal Total Feed",
+        "source": {
+          "block": "FEED_01",
+          "port": "out_solid"
+        },
+        "target": {
+          "block": "CYC_01",
+          "port": "in_meal"
+        },
+        "phase": "SOLID",
+        "mass_flow_tph": 280,
+        "volume_flow_nm3h": null,
+        "temperature_c": 60,
+        "pressure_mbar": 0,
+        "enthalpy_gjh": 79.229,
+        "composition": {
+          "CaCO3_pct": 76.85,
+          "MgCO3_pct": 2.15,
+          "SiO2_pct": 13.5,
+          "Al2O3_pct": 3.45,
+          "Fe2O3_pct": 2.1,
+          "Moisture_pct": 0.8,
+          "LOI_pct": 34.91
+        }
+      },
+      {
+        "stream_id": 2,
+        "name": "Stage 1 Meal to Stage 2",
+        "source": {
+          "block": "CYC_01",
+          "port": "out_meal"
+        },
+        "target": {
+          "block": "CYC_02",
+          "port": "in_meal"
+        },
+        "phase": "SOLID",
+        "mass_flow_tph": 275.8,
+        "volume_flow_nm3h": null,
+        "temperature_c": 519.85,
+        "pressure_mbar": -49.8,
+        "enthalpy_gjh": 206.808,
+        "composition": {
+          "CaCO3_pct": 76.85,
+          "MgCO3_pct": 2.15,
+          "SiO2_pct": 13.5,
+          "Al2O3_pct": 3.45,
+          "Fe2O3_pct": 2.1,
+          "Moisture_pct": 0.8,
+          "LOI_pct": 34.91
+        }
+      },
+      {
+        "stream_id": 3,
+        "name": "Stage 2 Meal to Stage 3",
+        "source": {
+          "block": "CYC_02",
+          "port": "out_meal"
+        },
+        "target": {
+          "block": "CYC_03",
+          "port": "in_meal"
+        },
+        "phase": "SOLID",
+        "mass_flow_tph": 271.663,
+        "volume_flow_nm3h": null,
+        "temperature_c": 697.51,
+        "pressure_mbar": -44.3,
+        "enthalpy_gjh": 259.161,
+        "composition": {
+          "CaCO3_pct": 76.85,
+          "MgCO3_pct": 2.15,
+          "SiO2_pct": 13.5,
+          "Al2O3_pct": 3.45,
+          "Fe2O3_pct": 2.1,
+          "Moisture_pct": 0.8,
+          "LOI_pct": 34.91
+        }
+      },
+      {
+        "stream_id": 4,
+        "name": "Stage 3 Meal to Stage 4",
+        "source": {
+          "block": "CYC_03",
+          "port": "out_meal"
+        },
+        "target": {
+          "block": "CYC_04",
+          "port": "in_meal"
+        },
+        "phase": "SOLID",
+        "mass_flow_tph": 267.588,
+        "volume_flow_nm3h": null,
+        "temperature_c": 793.68,
+        "pressure_mbar": -38.8,
+        "enthalpy_gjh": 286.299,
+        "composition": {
+          "CaCO3_pct": 76.85,
+          "MgCO3_pct": 2.15,
+          "SiO2_pct": 13.5,
+          "Al2O3_pct": 3.45,
+          "Fe2O3_pct": 2.1,
+          "Moisture_pct": 0.8,
+          "LOI_pct": 34.91
+        }
+      },
+      {
+        "stream_id": 5,
+        "name": "Stage 4 Meal to Calciner",
+        "source": {
+          "block": "CYC_04",
+          "port": "out_meal"
+        },
+        "target": {
+          "block": "CALC_01",
+          "port": "in_meal"
+        },
+        "phase": "SOLID",
+        "mass_flow_tph": 263.574,
+        "volume_flow_nm3h": null,
+        "temperature_c": 860.12,
+        "pressure_mbar": -33,
+        "enthalpy_gjh": 303.693,
+        "composition": {
+          "CaCO3_pct": 76.85,
+          "MgCO3_pct": 2.15,
+          "SiO2_pct": 13.5,
+          "Al2O3_pct": 3.45,
+          "Fe2O3_pct": 2.1,
+          "Moisture_pct": 0.8,
+          "LOI_pct": 34.91
+        }
+      },
+      {
+        "stream_id": 6,
+        "name": "Precalciner Fuel Supply",
+        "source": {
+          "block": "FUEL_PC",
+          "port": "out_fuel"
+        },
+        "target": {
+          "block": "CALC_01",
+          "port": "in_fuel"
+        },
+        "phase": "FUEL",
+        "mass_flow_tph": 12,
+        "volume_flow_nm3h": null,
+        "temperature_c": 25,
+        "pressure_mbar": 0,
+        "enthalpy_gjh": 334.191,
+        "composition": {
+          "fuel_name": "Petcoke & CDR",
+          "lhv_mj_kg": 27.5,
+          "ash_pct": 0.8,
+          "moisture_pct": 1
+        }
+      },
+      {
+        "stream_id": 7,
+        "name": "Tertiary Air Duct",
+        "source": {
+          "block": "COOLER_01",
+          "port": "out_tertiary_air"
+        },
+        "target": {
+          "block": "CALC_01",
+          "port": "in_tertiary_air"
+        },
+        "phase": "AIR",
+        "mass_flow_tph": 128.248,
+        "volume_flow_nm3h": 99186.4,
+        "temperature_c": 799.69,
+        "pressure_mbar": -5,
+        "enthalpy_gjh": 155.432,
+        "composition": {
+          "O2_pct": 20.9,
+          "N2_pct": 79.1
+        }
+      },
+      {
+        "stream_id": 8,
+        "name": "Kiln Inlet Exhaust Gas",
+        "source": {
+          "block": "KILN_01",
+          "port": "out_kiln_gas"
+        },
+        "target": {
+          "block": "CALC_01",
+          "port": "in_gas"
+        },
+        "phase": "GAS",
+        "mass_flow_tph": 99.191,
+        "volume_flow_nm3h": 74023.2,
+        "temperature_c": 1041.4,
+        "pressure_mbar": -1.8,
+        "enthalpy_gjh": 151.884,
+        "composition": {
+          "O2_pct": 2.2,
+          "CO2_pct": 22.5,
+          "N2_pct": 71,
+          "H2O_pct": 4.3
+        }
+      },
+      {
+        "stream_id": 9,
+        "name": "Calciner Flue Gas to Stage 5",
+        "source": {
+          "block": "CALC_01",
+          "port": "out_gas"
+        },
+        "target": {
+          "block": "CYC_05",
+          "port": "in_gas"
+        },
+        "phase": "GAS",
+        "mass_flow_tph": 320.578,
+        "volume_flow_nm3h": 239237.2,
+        "temperature_c": 868.86,
+        "pressure_mbar": -28,
+        "enthalpy_gjh": 417.257,
+        "composition": {
+          "CO2_pct": 38.1,
+          "O2_pct": 2.8,
+          "N2_pct": 62,
+          "H2O_pct": 7.2
+        }
+      },
+      {
+        "stream_id": 10,
+        "name": "Calciner Decarbonated Meal to Stage 5",
+        "source": {
+          "block": "CALC_01",
+          "port": "out_meal"
+        },
+        "target": {
+          "block": "CYC_05",
+          "port": "in_meal"
+        },
+        "phase": "SOLID",
+        "mass_flow_tph": 182.436,
+        "volume_flow_nm3h": null,
+        "temperature_c": 868.86,
+        "pressure_mbar": -28,
+        "enthalpy_gjh": 212.174,
+        "composition": {
+          "CaO_pct": 56.74,
+          "CaCO3_pct": 9.76,
+          "SiO2_pct": 19.5,
+          "Al2O3_pct": 4.98,
+          "Fe2O3_pct": 3.03,
+          "MgO_pct": 1.48,
+          "LOI_pct": 4.29
+        }
+      },
+      {
+        "stream_id": 11,
+        "name": "Stage 5 Flue Gas to Stage 4",
+        "source": {
+          "block": "CYC_05",
+          "port": "out_gas"
+        },
+        "target": {
+          "block": "CYC_04",
+          "port": "in_gas"
+        },
+        "phase": "GAS",
+        "mass_flow_tph": 323.314,
+        "volume_flow_nm3h": 241279.3,
+        "temperature_c": 878.86,
+        "pressure_mbar": -33,
+        "enthalpy_gjh": 425.127,
+        "composition": {
+          "CO2_pct": 38.1,
+          "O2_pct": 2.8,
+          "N2_pct": 62,
+          "H2O_pct": 7.2
+        }
+      },
+      {
+        "stream_id": 12,
+        "name": "Stage 4 Flue Gas to Stage 3",
+        "source": {
+          "block": "CYC_04",
+          "port": "out_gas"
+        },
+        "target": {
+          "block": "CYC_03",
+          "port": "in_gas"
+        },
+        "phase": "GAS",
+        "mass_flow_tph": 327.328,
+        "volume_flow_nm3h": 244274.7,
+        "temperature_c": 817.73,
+        "pressure_mbar": -38.8,
+        "enthalpy_gjh": 404.28,
+        "composition": {
+          "CO2_pct": 38.1,
+          "O2_pct": 2.8,
+          "N2_pct": 62,
+          "H2O_pct": 7.2
+        }
+      },
+      {
+        "stream_id": 13,
+        "name": "Stage 3 Flue Gas to Stage 2",
+        "source": {
+          "block": "CYC_03",
+          "port": "out_gas"
+        },
+        "target": {
+          "block": "CYC_02",
+          "port": "in_gas"
+        },
+        "phase": "GAS",
+        "mass_flow_tph": 331.403,
+        "volume_flow_nm3h": 247315.7,
+        "temperature_c": 736.54,
+        "pressure_mbar": -44.3,
+        "enthalpy_gjh": 374.928,
+        "composition": {
+          "CO2_pct": 38.1,
+          "O2_pct": 2.8,
+          "N2_pct": 62,
+          "H2O_pct": 7.2
+        }
+      },
+      {
+        "stream_id": 14,
+        "name": "Stage 2 Flue Gas to Stage 1",
+        "source": {
+          "block": "CYC_02",
+          "port": "out_gas"
+        },
+        "target": {
+          "block": "CYC_01",
+          "port": "in_gas"
+        },
+        "phase": "GAS",
+        "mass_flow_tph": 335.54,
+        "volume_flow_nm3h": 250403.1,
+        "temperature_c": 601.06,
+        "pressure_mbar": -49.8,
+        "enthalpy_gjh": 322.78,
+        "composition": {
+          "CO2_pct": 38.1,
+          "O2_pct": 2.8,
+          "N2_pct": 62,
+          "H2O_pct": 7.2
+        }
+      },
+      {
+        "stream_id": 15,
+        "name": "Preheater Top Gas to ID Fan",
+        "source": {
+          "block": "CYC_01",
+          "port": "out_gas"
+        },
+        "target": {
+          "block": "ID_FAN_01",
+          "port": "in_gas"
+        },
+        "phase": "GAS",
+        "mass_flow_tph": 339.74,
+        "volume_flow_nm3h": 253537.4,
+        "temperature_c": 296.17,
+        "pressure_mbar": -54.8,
+        "enthalpy_gjh": 204.261,
+        "composition": {
+          "CO2_pct": 38.1,
+          "O2_pct": 2.8,
+          "N2_pct": 62,
+          "H2O_pct": 7.2
+        }
+      },
+      {
+        "stream_id": 16,
+        "name": "Decarbonated Meal to Kiln",
+        "source": {
+          "block": "CYC_05",
+          "port": "out_meal"
+        },
+        "target": {
+          "block": "KILN_01",
+          "port": "in_meal_calcined"
+        },
+        "phase": "SOLID",
+        "mass_flow_tph": 179.699,
+        "volume_flow_nm3h": null,
+        "temperature_c": 858.86,
+        "pressure_mbar": -28,
+        "enthalpy_gjh": 206.736,
+        "composition": {
+          "CaO_pct": 56.74,
+          "CaCO3_pct": 9.76,
+          "SiO2_pct": 19.5,
+          "Al2O3_pct": 4.98,
+          "Fe2O3_pct": 3.03,
+          "MgO_pct": 1.48,
+          "LOI_pct": 4.29
+        }
+      },
+      {
+        "stream_id": 17,
+        "name": "Kiln Main Burner Flame Fuel",
+        "source": {
+          "block": "FUEL_KILN",
+          "port": "out_fuel"
+        },
+        "target": {
+          "block": "KILN_01",
+          "port": "in_flame_fuel"
+        },
+        "phase": "FUEL",
+        "mass_flow_tph": 7.2,
+        "volume_flow_nm3h": null,
+        "temperature_c": 25,
+        "pressure_mbar": 0,
+        "enthalpy_gjh": 228.595,
+        "composition": {
+          "fuel_name": "Petcoke Main",
+          "lhv_mj_kg": 31.4,
+          "ash_pct": 0.8,
+          "moisture_pct": 1
+        }
+      },
+      {
+        "stream_id": 18,
+        "name": "Hot Secondary Air to Kiln",
+        "source": {
+          "block": "COOLER_01",
+          "port": "out_secondary_air"
+        },
+        "target": {
+          "block": "KILN_01",
+          "port": "in_secondary_air"
+        },
+        "phase": "AIR",
+        "mass_flow_tph": 84.337,
+        "volume_flow_nm3h": 65225.8,
+        "temperature_c": 925.8,
+        "pressure_mbar": -0.5,
+        "enthalpy_gjh": 116.09,
+        "composition": {
+          "O2_pct": 20.9,
+          "N2_pct": 79.1
+        }
+      },
+      {
+        "stream_id": 19,
+        "name": "Hot Clinker to Grate Cooler",
+        "source": {
+          "block": "KILN_01",
+          "port": "out_clinker"
+        },
+        "target": {
+          "block": "COOLER_01",
+          "port": "in_clinker_hot"
+        },
+        "phase": "SOLID",
+        "mass_flow_tph": 172.045,
+        "volume_flow_nm3h": null,
+        "temperature_c": 1392.23,
+        "pressure_mbar": 0,
+        "enthalpy_gjh": 323.196,
+        "composition": {
+          "C3S_pct": 58.2,
+          "C2S_pct": 17.8,
+          "C3A_pct": 7.8,
+          "C4AF_pct": 10.2,
+          "Free_CaO_pct": 1.96,
+          "MgO_pct": 1.4
+        }
+      },
+      {
+        "stream_id": 20,
+        "name": "Cooled Clinker to Dome Silo",
+        "source": {
+          "block": "COOLER_01",
+          "port": "out_clinker_cool"
+        },
+        "target": {
+          "block": "SILO_CLINKER",
+          "port": "in_solid"
+        },
+        "phase": "SOLID",
+        "mass_flow_tph": 172.045,
+        "volume_flow_nm3h": null,
+        "temperature_c": 95,
+        "pressure_mbar": 0,
+        "enthalpy_gjh": 54.274,
+        "composition": {
+          "C3S_pct": 58.2,
+          "C2S_pct": 17.8,
+          "C3A_pct": 7.8,
+          "C4AF_pct": 10.2,
+          "Free_CaO_pct": 1.96,
+          "MgO_pct": 1.4
+        }
+      }
+    ]
+  },
+  "flowsheet": {
+    "flowsheet_id": "kiln_3_full_pyroprocessing_plant__280_tph_",
+    "name": "Kiln 3 Full Pyroprocessing Plant (280 TPH)",
+    "version": "2.0",
+    "description": "Complete 5-stage preheater, inline calciner, tertiary air duct, rotary kiln, and grate cooler.",
+    "components": [
+      {
+        "id": "FEED_01",
+        "name": "Raw Meal Feeder",
+        "type": "GravimetricFeeder",
+        "category": "Feeding",
+        "position": {
+          "x": 60,
+          "y": 60
+        },
+        "parameters": {
+          "nominal_rate_tph": 280,
+          "time_constant_s": 1.5,
+          "temperature_c": 60,
+          "moisture_pct": 0.8,
+          "caco3_pct": 76.85,
+          "mgco3_pct": 2.15,
+          "sio2_pct": 13.5,
+          "al2o3_pct": 3.45,
+          "fe2o3_pct": 2.1
+        },
+        "state": {
+          "actual_feed_rate_tph": 280,
+          "accumulated_tonnage_t": 0,
+          "feeder_status": "RUNNING",
+          "caco3_pct": 76.85,
+          "loi_pct": 34.91,
+          "lsf": 99.4,
+          "heat_loss_gjh": 0
+        },
+        "ports": {
+          "in_material": {
+            "name": "in_material",
+            "direction": "IN",
+            "phase": "SOLID",
+            "description": "Optional upstream silo feed",
+            "required": false,
+            "connected_stream_id": null
+          },
+          "out_solid": {
+            "name": "out_solid",
+            "direction": "OUT",
+            "phase": "SOLID",
+            "description": "Controlled raw meal flow",
+            "required": true,
+            "connected_stream_id": 1
+          }
+        }
+      },
+      {
+        "id": "CYC_01",
+        "name": "Preheater Cyclone C1 (Top)",
+        "type": "CycloneStage",
+        "category": "Separation",
+        "position": {
+          "x": 260,
+          "y": 60
+        },
+        "parameters": {
+          "stage_number": 1,
+          "separation_efficiency": 0.985,
+          "thermal_effectiveness": 0.85,
+          "dp_mbar": 5,
+          "heat_loss_pct": 1.5
+        },
+        "state": {
+          "gas_temp_c": 296.2,
+          "meal_temp_c": 519.9,
+          "pressure_drop_mbar": 5,
+          "heat_transferred_gjh": 109.36,
+          "heat_loss_gjh": 3.19,
+          "dust_carryover_tph": 4.2
+        },
+        "ports": {
+          "in_gas": {
+            "name": "in_gas",
+            "direction": "IN",
+            "phase": "GAS",
+            "description": "Rising hot flue gas from stage below",
+            "required": true,
+            "connected_stream_id": 14
+          },
+          "in_meal": {
+            "name": "in_meal",
+            "direction": "IN",
+            "phase": "SOLID",
+            "description": "Descending meal from stage above or feeder",
+            "required": true,
+            "connected_stream_id": 1
+          },
+          "out_gas": {
+            "name": "out_gas",
+            "direction": "OUT",
+            "phase": "GAS",
+            "description": "Cooled gas exiting to upper stage or ID fan",
+            "required": true,
+            "connected_stream_id": 15
+          },
+          "out_meal": {
+            "name": "out_meal",
+            "direction": "OUT",
+            "phase": "SOLID",
+            "description": "Preheated meal discharging from dipleg",
+            "required": true,
+            "connected_stream_id": 2
+          }
+        }
+      },
+      {
+        "id": "CYC_02",
+        "name": "Preheater Cyclone C2",
+        "type": "CycloneStage",
+        "category": "Separation",
+        "position": {
+          "x": 260,
+          "y": 180
+        },
+        "parameters": {
+          "stage_number": 2,
+          "separation_efficiency": 0.985,
+          "thermal_effectiveness": 0.82,
+          "dp_mbar": 5.5,
+          "heat_loss_pct": 1.5
+        },
+        "state": {
+          "gas_temp_c": 601.1,
+          "meal_temp_c": 697.5,
+          "pressure_drop_mbar": 5.5,
+          "heat_transferred_gjh": 46.33,
+          "heat_loss_gjh": 3.96,
+          "dust_carryover_tph": 4.14
+        },
+        "ports": {
+          "in_gas": {
+            "name": "in_gas",
+            "direction": "IN",
+            "phase": "GAS",
+            "description": "Rising hot flue gas from stage below",
+            "required": true,
+            "connected_stream_id": 13
+          },
+          "in_meal": {
+            "name": "in_meal",
+            "direction": "IN",
+            "phase": "SOLID",
+            "description": "Descending meal from stage above or feeder",
+            "required": true,
+            "connected_stream_id": 2
+          },
+          "out_gas": {
+            "name": "out_gas",
+            "direction": "OUT",
+            "phase": "GAS",
+            "description": "Cooled gas exiting to upper stage or ID fan",
+            "required": true,
+            "connected_stream_id": 14
+          },
+          "out_meal": {
+            "name": "out_meal",
+            "direction": "OUT",
+            "phase": "SOLID",
+            "description": "Preheated meal discharging from dipleg",
+            "required": true,
+            "connected_stream_id": 3
+          }
+        }
+      },
+      {
+        "id": "CYC_03",
+        "name": "Preheater Cyclone C3",
+        "type": "CycloneStage",
+        "category": "Separation",
+        "position": {
+          "x": 260,
+          "y": 300
+        },
+        "parameters": {
+          "stage_number": 3,
+          "separation_efficiency": 0.985,
+          "thermal_effectiveness": 0.8,
+          "dp_mbar": 5.5,
+          "heat_loss_pct": 1.5
+        },
+        "state": {
+          "gas_temp_c": 736.5,
+          "meal_temp_c": 793.7,
+          "pressure_drop_mbar": 5.5,
+          "heat_transferred_gjh": 25.68,
+          "heat_loss_gjh": 4.41,
+          "dust_carryover_tph": 4.07
+        },
+        "ports": {
+          "in_gas": {
+            "name": "in_gas",
+            "direction": "IN",
+            "phase": "GAS",
+            "description": "Rising hot flue gas from stage below",
+            "required": true,
+            "connected_stream_id": 12
+          },
+          "in_meal": {
+            "name": "in_meal",
+            "direction": "IN",
+            "phase": "SOLID",
+            "description": "Descending meal from stage above or feeder",
+            "required": true,
+            "connected_stream_id": 3
+          },
+          "out_gas": {
+            "name": "out_gas",
+            "direction": "OUT",
+            "phase": "GAS",
+            "description": "Cooled gas exiting to upper stage or ID fan",
+            "required": true,
+            "connected_stream_id": 13
+          },
+          "out_meal": {
+            "name": "out_meal",
+            "direction": "OUT",
+            "phase": "SOLID",
+            "description": "Preheated meal discharging from dipleg",
+            "required": true,
+            "connected_stream_id": 4
+          }
+        }
+      },
+      {
+        "id": "CYC_04",
+        "name": "Preheater Cyclone C4",
+        "type": "CycloneStage",
+        "category": "Separation",
+        "position": {
+          "x": 260,
+          "y": 420
+        },
+        "parameters": {
+          "stage_number": 4,
+          "separation_efficiency": 0.985,
+          "thermal_effectiveness": 0.78,
+          "dp_mbar": 5.8,
+          "heat_loss_pct": 1.5
+        },
+        "state": {
+          "gas_temp_c": 817.7,
+          "meal_temp_c": 860.1,
+          "pressure_drop_mbar": 5.8,
+          "heat_transferred_gjh": 17.83,
+          "heat_loss_gjh": 4.73,
+          "dust_carryover_tph": 4.01
+        },
+        "ports": {
+          "in_gas": {
+            "name": "in_gas",
+            "direction": "IN",
+            "phase": "GAS",
+            "description": "Rising hot flue gas from stage below",
+            "required": true,
+            "connected_stream_id": 11
+          },
+          "in_meal": {
+            "name": "in_meal",
+            "direction": "IN",
+            "phase": "SOLID",
+            "description": "Descending meal from stage above or feeder",
+            "required": true,
+            "connected_stream_id": 4
+          },
+          "out_gas": {
+            "name": "out_gas",
+            "direction": "OUT",
+            "phase": "GAS",
+            "description": "Cooled gas exiting to upper stage or ID fan",
+            "required": true,
+            "connected_stream_id": 12
+          },
+          "out_meal": {
+            "name": "out_meal",
+            "direction": "OUT",
+            "phase": "SOLID",
+            "description": "Preheated meal discharging from dipleg",
+            "required": true,
+            "connected_stream_id": 5
+          }
+        }
+      },
+      {
+        "id": "CALC_01",
+        "name": "Inline Precalciner Reactor",
+        "type": "CalcinerReactor",
+        "category": "Combustion",
+        "position": {
+          "x": 480,
+          "y": 420
+        },
+        "parameters": {
+          "volume_m3": 1100,
+          "design_calcination_pct": 92.5,
+          "combustion_efficiency": 99,
+          "heat_loss_pct": 3.5,
+          "target_temp_c": 865
+        },
+        "state": {
+          "calciner_temp_c": 868.9,
+          "calcination_degree_pct": 91.2,
+          "co2_released_tph": 81.23,
+          "heat_input_mw": 90.75,
+          "heat_loss_gjh": 23.68,
+          "apparent_calcination_heat_gjh": 329.22
+        },
+        "ports": {
+          "in_meal": {
+            "name": "in_meal",
+            "direction": "IN",
+            "phase": "SOLID",
+            "description": "Preheated raw meal from stage 4",
+            "required": true,
+            "connected_stream_id": 5
+          },
+          "in_gas": {
+            "name": "in_gas",
+            "direction": "IN",
+            "phase": "GAS",
+            "description": "Kiln riser exhaust gas",
+            "required": false,
+            "connected_stream_id": 8
+          },
+          "in_tertiary_air": {
+            "name": "in_tertiary_air",
+            "direction": "IN",
+            "phase": "AIR",
+            "description": "Tertiary air from grate cooler",
+            "required": false,
+            "connected_stream_id": 7
+          },
+          "in_fuel": {
+            "name": "in_fuel",
+            "direction": "IN",
+            "phase": "FUEL",
+            "description": "Dosed fuel supply (petcoke / CDR)",
+            "required": true,
+            "connected_stream_id": 6
+          },
+          "out_gas": {
+            "name": "out_gas",
+            "direction": "OUT",
+            "phase": "GAS",
+            "description": "Calciner flue gas with released CO2",
+            "required": false,
+            "connected_stream_id": 9
+          },
+          "out_meal": {
+            "name": "out_meal",
+            "direction": "OUT",
+            "phase": "SOLID",
+            "description": "Decarbonated raw meal (90-95% CaO)",
+            "required": false,
+            "connected_stream_id": 10
+          },
+          "out_gas_meal_mix": {
+            "name": "out_gas_meal_mix",
+            "direction": "OUT",
+            "phase": "GAS",
+            "description": "Combined suspension to stage 5 cyclone",
+            "required": false,
+            "connected_stream_id": null
+          }
+        }
+      },
+      {
+        "id": "FUEL_PC",
+        "name": "Precalciner Fuel Dosing",
+        "type": "FuelFeeder",
+        "category": "Feeding",
+        "position": {
+          "x": 480,
+          "y": 570
+        },
+        "parameters": {
+          "fuel_name": "Petcoke & CDR",
+          "nominal_rate_tph": 12,
+          "lhv_mj_kg": 27.5,
+          "ash_pct": 0.8,
+          "moisture_pct": 1
+        },
+        "state": {
+          "actual_rate_tph": 12,
+          "heat_input_mw": 91.67,
+          "heat_input_gjh": 330,
+          "heat_loss_gjh": 0
+        },
+        "ports": {
+          "out_fuel": {
+            "name": "out_fuel",
+            "direction": "OUT",
+            "phase": "FUEL",
+            "description": "Dosed fuel supply to burner/calciner",
+            "required": true,
+            "connected_stream_id": 6
+          }
+        }
+      },
+      {
+        "id": "CYC_05",
+        "name": "Preheater Cyclone C5 (Bottom)",
+        "type": "CycloneStage",
+        "category": "Separation",
+        "position": {
+          "x": 680,
+          "y": 360
+        },
+        "parameters": {
+          "stage_number": 5,
+          "separation_efficiency": 0.985,
+          "thermal_effectiveness": 0.82,
+          "dp_mbar": 5,
+          "heat_loss_pct": 1.5
+        },
+        "state": {
+          "gas_temp_c": 878.9,
+          "meal_temp_c": 858.9,
+          "pressure_drop_mbar": 5,
+          "heat_transferred_gjh": 0,
+          "heat_loss_gjh": 4.62,
+          "dust_carryover_tph": 2.74
+        },
+        "ports": {
+          "in_gas": {
+            "name": "in_gas",
+            "direction": "IN",
+            "phase": "GAS",
+            "description": "Rising hot flue gas from stage below",
+            "required": true,
+            "connected_stream_id": 9
+          },
+          "in_meal": {
+            "name": "in_meal",
+            "direction": "IN",
+            "phase": "SOLID",
+            "description": "Descending meal from stage above or feeder",
+            "required": true,
+            "connected_stream_id": 10
+          },
+          "out_gas": {
+            "name": "out_gas",
+            "direction": "OUT",
+            "phase": "GAS",
+            "description": "Cooled gas exiting to upper stage or ID fan",
+            "required": true,
+            "connected_stream_id": 11
+          },
+          "out_meal": {
+            "name": "out_meal",
+            "direction": "OUT",
+            "phase": "SOLID",
+            "description": "Preheated meal discharging from dipleg",
+            "required": true,
+            "connected_stream_id": 16
+          }
+        }
+      },
+      {
+        "id": "KILN_01",
+        "name": "Rotary Kiln 3 (72m x 4.6m)",
+        "type": "RotaryKiln",
+        "category": "Pyroprocess",
+        "position": {
+          "x": 880,
+          "y": 480
+        },
+        "parameters": {
+          "length_m": 72,
+          "diameter_m": 4.6,
+          "slope_pct": 3.5,
+          "speed_rpm": 3.79,
+          "target_burning_zone_c": 1435,
+          "shell_heat_loss_mw": 14.8
+        },
+        "state": {
+          "burning_zone_temp_c": 1407.2,
+          "kiln_inlet_gas_temp_c": 1041.4,
+          "kiln_drive_torque_kwn": 182,
+          "bed_residence_time_min": 20.6,
+          "free_lime_pct": 1.96,
+          "c3s_pct": 58.2,
+          "clinker_rate_tph": 172.04,
+          "heat_loss_gjh": 53.28
+        },
+        "ports": {
+          "in_meal_calcined": {
+            "name": "in_meal_calcined",
+            "direction": "IN",
+            "phase": "SOLID",
+            "description": "Calcined hot meal from calciner/bottom cyclone",
+            "required": true,
+            "connected_stream_id": 16
+          },
+          "in_flame_fuel": {
+            "name": "in_flame_fuel",
+            "direction": "IN",
+            "phase": "FUEL",
+            "description": "Kiln main burner fuel (petcoke / alternative fuels)",
+            "required": true,
+            "connected_stream_id": 17
+          },
+          "in_secondary_air": {
+            "name": "in_secondary_air",
+            "direction": "IN",
+            "phase": "AIR",
+            "description": "Preheated secondary air from cooler hood",
+            "required": true,
+            "connected_stream_id": 18
+          },
+          "in_primary_air": {
+            "name": "in_primary_air",
+            "direction": "IN",
+            "phase": "AIR",
+            "description": "Burner primary momentum air",
+            "required": false,
+            "connected_stream_id": null
+          },
+          "out_clinker": {
+            "name": "out_clinker",
+            "direction": "OUT",
+            "phase": "SOLID",
+            "description": "Sintered hot clinker discharging into grate cooler",
+            "required": true,
+            "connected_stream_id": 19
+          },
+          "out_kiln_gas": {
+            "name": "out_kiln_gas",
+            "direction": "OUT",
+            "phase": "GAS",
+            "description": "Kiln exhaust flue gas discharging into calciner riser",
+            "required": true,
+            "connected_stream_id": 8
+          }
+        }
+      },
+      {
+        "id": "FUEL_KILN",
+        "name": "Kiln Main Burner Fuel",
+        "type": "FuelFeeder",
+        "category": "Feeding",
+        "position": {
+          "x": 1080,
+          "y": 620
+        },
+        "parameters": {
+          "fuel_name": "Petcoke Main",
+          "nominal_rate_tph": 7.2,
+          "lhv_mj_kg": 31.4,
+          "ash_pct": 0.8,
+          "moisture_pct": 1
+        },
+        "state": {
+          "actual_rate_tph": 7.2,
+          "heat_input_mw": 62.8,
+          "heat_input_gjh": 226.08,
+          "heat_loss_gjh": 0
+        },
+        "ports": {
+          "out_fuel": {
+            "name": "out_fuel",
+            "direction": "OUT",
+            "phase": "FUEL",
+            "description": "Dosed fuel supply to burner/calciner",
+            "required": true,
+            "connected_stream_id": 17
+          }
+        }
+      },
+      {
+        "id": "COOLER_01",
+        "name": "Hydraulic Grate Cooler",
+        "type": "GrateCooler",
+        "category": "Cooling",
+        "position": {
+          "x": 1080,
+          "y": 440
+        },
+        "parameters": {
+          "grate_area_m2": 105,
+          "cooling_air_total_tph": 348.5,
+          "secondary_air_split_pct": 24.2,
+          "tertiary_air_split_pct": 36.8,
+          "recuperation_efficiency": 0.74,
+          "clinker_target_temp_c": 95
+        },
+        "state": {
+          "secondary_air_temp_c": 925.8,
+          "tertiary_air_temp_c": 799.7,
+          "cooler_vent_temp_c": 231.6,
+          "clinker_exit_temp_c": 95,
+          "recuperated_heat_gjh": 179.66,
+          "cooler_hydraulic_press_bar": 92,
+          "heat_loss_gjh": 9.71
+        },
+        "ports": {
+          "in_clinker_hot": {
+            "name": "in_clinker_hot",
+            "direction": "IN",
+            "phase": "SOLID",
+            "description": "Hot clinker discharging from rotary kiln",
+            "required": true,
+            "connected_stream_id": 19
+          },
+          "in_cooling_air": {
+            "name": "in_cooling_air",
+            "direction": "IN",
+            "phase": "AIR",
+            "description": "Ambient cooling air from under-grate fans",
+            "required": false,
+            "connected_stream_id": null
+          },
+          "out_clinker_cool": {
+            "name": "out_clinker_cool",
+            "direction": "OUT",
+            "phase": "SOLID",
+            "description": "Cooled clinker discharged to pan conveyor & silo",
+            "required": true,
+            "connected_stream_id": 20
+          },
+          "out_secondary_air": {
+            "name": "out_secondary_air",
+            "direction": "OUT",
+            "phase": "AIR",
+            "description": "Hot secondary combustion air to kiln burner",
+            "required": true,
+            "connected_stream_id": 18
+          },
+          "out_tertiary_air": {
+            "name": "out_tertiary_air",
+            "direction": "OUT",
+            "phase": "AIR",
+            "description": "Hot tertiary combustion air to precalciner",
+            "required": true,
+            "connected_stream_id": 7
+          },
+          "out_vent_air": {
+            "name": "out_vent_air",
+            "direction": "OUT",
+            "phase": "AIR",
+            "description": "Excess cooling air to cooler baghouse filter",
+            "required": false,
+            "connected_stream_id": null
+          }
+        }
+      },
+      {
+        "id": "ID_FAN_01",
+        "name": "Main ID Process Fan",
+        "type": "IDFan",
+        "category": "Draft / Fans",
+        "position": {
+          "x": 80,
+          "y": 200
+        },
+        "parameters": {
+          "design_flow_nm3h": 350000,
+          "design_dp_mbar": 65,
+          "damper_pct": 82,
+          "motor_rated_kw": 2500,
+          "fan_efficiency": 0.78
+        },
+        "state": {
+          "actual_flow_nm3h": 253537.4,
+          "fan_dp_mbar": 45.48,
+          "motor_power_kw": 855.8,
+          "motor_current_a": 813.8,
+          "inlet_draft_mbar": -54.8,
+          "outlet_draft_mbar": -9.3,
+          "heat_loss_gjh": 0
+        },
+        "ports": {
+          "in_gas": {
+            "name": "in_gas",
+            "direction": "IN",
+            "phase": "GAS",
+            "description": "Flue gas suction from preheater top stage",
+            "required": true,
+            "connected_stream_id": 15
+          },
+          "out_gas": {
+            "name": "out_gas",
+            "direction": "OUT",
+            "phase": "GAS",
+            "description": "Exhaust gas discharge to baghouse / main stack",
+            "required": true,
+            "connected_stream_id": null
+          }
+        }
+      },
+      {
+        "id": "SILO_CLINKER",
+        "name": "Clinker Storage Dome",
+        "type": "SiloStorage",
+        "category": "Feeding",
+        "position": {
+          "x": 1260,
+          "y": 440
+        },
+        "parameters": {
+          "capacity_tons": 50000,
+          "initial_level_pct": 45
+        },
+        "state": {
+          "level_pct": 45,
+          "stored_tons": 22500,
+          "heat_loss_gjh": 0
+        },
+        "ports": {
+          "in_solid": {
+            "name": "in_solid",
+            "direction": "IN",
+            "phase": "SOLID",
+            "description": "Inlet material from elevator",
+            "required": true,
+            "connected_stream_id": 20
+          },
+          "out_solid": {
+            "name": "out_solid",
+            "direction": "OUT",
+            "phase": "SOLID",
+            "description": "Discharge to downstream process",
+            "required": true,
+            "connected_stream_id": null
+          }
+        }
+      }
+    ],
+    "connections": [
+      {
+        "stream_id": 1,
+        "name": "Raw Meal Total Feed",
+        "source": {
+          "block": "FEED_01",
+          "port": "out_solid"
+        },
+        "target": {
+          "block": "CYC_01",
+          "port": "in_meal"
+        },
+        "phase": "SOLID",
+        "mass_flow_tph": 280,
+        "volume_flow_nm3h": null,
+        "temperature_c": 60,
+        "pressure_mbar": 0,
+        "enthalpy_gjh": 79.229,
+        "composition": {
+          "CaCO3_pct": 76.85,
+          "MgCO3_pct": 2.15,
+          "SiO2_pct": 13.5,
+          "Al2O3_pct": 3.45,
+          "Fe2O3_pct": 2.1,
+          "Moisture_pct": 0.8,
+          "LOI_pct": 34.91
+        }
+      },
+      {
+        "stream_id": 2,
+        "name": "Stage 1 Meal to Stage 2",
+        "source": {
+          "block": "CYC_01",
+          "port": "out_meal"
+        },
+        "target": {
+          "block": "CYC_02",
+          "port": "in_meal"
+        },
+        "phase": "SOLID",
+        "mass_flow_tph": 275.8,
+        "volume_flow_nm3h": null,
+        "temperature_c": 519.85,
+        "pressure_mbar": -49.8,
+        "enthalpy_gjh": 206.808,
+        "composition": {
+          "CaCO3_pct": 76.85,
+          "MgCO3_pct": 2.15,
+          "SiO2_pct": 13.5,
+          "Al2O3_pct": 3.45,
+          "Fe2O3_pct": 2.1,
+          "Moisture_pct": 0.8,
+          "LOI_pct": 34.91
+        }
+      },
+      {
+        "stream_id": 3,
+        "name": "Stage 2 Meal to Stage 3",
+        "source": {
+          "block": "CYC_02",
+          "port": "out_meal"
+        },
+        "target": {
+          "block": "CYC_03",
+          "port": "in_meal"
+        },
+        "phase": "SOLID",
+        "mass_flow_tph": 271.663,
+        "volume_flow_nm3h": null,
+        "temperature_c": 697.51,
+        "pressure_mbar": -44.3,
+        "enthalpy_gjh": 259.161,
+        "composition": {
+          "CaCO3_pct": 76.85,
+          "MgCO3_pct": 2.15,
+          "SiO2_pct": 13.5,
+          "Al2O3_pct": 3.45,
+          "Fe2O3_pct": 2.1,
+          "Moisture_pct": 0.8,
+          "LOI_pct": 34.91
+        }
+      },
+      {
+        "stream_id": 4,
+        "name": "Stage 3 Meal to Stage 4",
+        "source": {
+          "block": "CYC_03",
+          "port": "out_meal"
+        },
+        "target": {
+          "block": "CYC_04",
+          "port": "in_meal"
+        },
+        "phase": "SOLID",
+        "mass_flow_tph": 267.588,
+        "volume_flow_nm3h": null,
+        "temperature_c": 793.68,
+        "pressure_mbar": -38.8,
+        "enthalpy_gjh": 286.299,
+        "composition": {
+          "CaCO3_pct": 76.85,
+          "MgCO3_pct": 2.15,
+          "SiO2_pct": 13.5,
+          "Al2O3_pct": 3.45,
+          "Fe2O3_pct": 2.1,
+          "Moisture_pct": 0.8,
+          "LOI_pct": 34.91
+        }
+      },
+      {
+        "stream_id": 5,
+        "name": "Stage 4 Meal to Calciner",
+        "source": {
+          "block": "CYC_04",
+          "port": "out_meal"
+        },
+        "target": {
+          "block": "CALC_01",
+          "port": "in_meal"
+        },
+        "phase": "SOLID",
+        "mass_flow_tph": 263.574,
+        "volume_flow_nm3h": null,
+        "temperature_c": 860.12,
+        "pressure_mbar": -33,
+        "enthalpy_gjh": 303.693,
+        "composition": {
+          "CaCO3_pct": 76.85,
+          "MgCO3_pct": 2.15,
+          "SiO2_pct": 13.5,
+          "Al2O3_pct": 3.45,
+          "Fe2O3_pct": 2.1,
+          "Moisture_pct": 0.8,
+          "LOI_pct": 34.91
+        }
+      },
+      {
+        "stream_id": 6,
+        "name": "Precalciner Fuel Supply",
+        "source": {
+          "block": "FUEL_PC",
+          "port": "out_fuel"
+        },
+        "target": {
+          "block": "CALC_01",
+          "port": "in_fuel"
+        },
+        "phase": "FUEL",
+        "mass_flow_tph": 12,
+        "volume_flow_nm3h": null,
+        "temperature_c": 25,
+        "pressure_mbar": 0,
+        "enthalpy_gjh": 334.191,
+        "composition": {
+          "fuel_name": "Petcoke & CDR",
+          "lhv_mj_kg": 27.5,
+          "ash_pct": 0.8,
+          "moisture_pct": 1
+        }
+      },
+      {
+        "stream_id": 7,
+        "name": "Tertiary Air Duct",
+        "source": {
+          "block": "COOLER_01",
+          "port": "out_tertiary_air"
+        },
+        "target": {
+          "block": "CALC_01",
+          "port": "in_tertiary_air"
+        },
+        "phase": "AIR",
+        "mass_flow_tph": 128.248,
+        "volume_flow_nm3h": 99186.4,
+        "temperature_c": 799.69,
+        "pressure_mbar": -5,
+        "enthalpy_gjh": 155.432,
+        "composition": {
+          "O2_pct": 20.9,
+          "N2_pct": 79.1
+        }
+      },
+      {
+        "stream_id": 8,
+        "name": "Kiln Inlet Exhaust Gas",
+        "source": {
+          "block": "KILN_01",
+          "port": "out_kiln_gas"
+        },
+        "target": {
+          "block": "CALC_01",
+          "port": "in_gas"
+        },
+        "phase": "GAS",
+        "mass_flow_tph": 99.191,
+        "volume_flow_nm3h": 74023.2,
+        "temperature_c": 1041.4,
+        "pressure_mbar": -1.8,
+        "enthalpy_gjh": 151.884,
+        "composition": {
+          "O2_pct": 2.2,
+          "CO2_pct": 22.5,
+          "N2_pct": 71,
+          "H2O_pct": 4.3
+        }
+      },
+      {
+        "stream_id": 9,
+        "name": "Calciner Flue Gas to Stage 5",
+        "source": {
+          "block": "CALC_01",
+          "port": "out_gas"
+        },
+        "target": {
+          "block": "CYC_05",
+          "port": "in_gas"
+        },
+        "phase": "GAS",
+        "mass_flow_tph": 320.578,
+        "volume_flow_nm3h": 239237.2,
+        "temperature_c": 868.86,
+        "pressure_mbar": -28,
+        "enthalpy_gjh": 417.257,
+        "composition": {
+          "CO2_pct": 38.1,
+          "O2_pct": 2.8,
+          "N2_pct": 62,
+          "H2O_pct": 7.2
+        }
+      },
+      {
+        "stream_id": 10,
+        "name": "Calciner Decarbonated Meal to Stage 5",
+        "source": {
+          "block": "CALC_01",
+          "port": "out_meal"
+        },
+        "target": {
+          "block": "CYC_05",
+          "port": "in_meal"
+        },
+        "phase": "SOLID",
+        "mass_flow_tph": 182.436,
+        "volume_flow_nm3h": null,
+        "temperature_c": 868.86,
+        "pressure_mbar": -28,
+        "enthalpy_gjh": 212.174,
+        "composition": {
+          "CaO_pct": 56.74,
+          "CaCO3_pct": 9.76,
+          "SiO2_pct": 19.5,
+          "Al2O3_pct": 4.98,
+          "Fe2O3_pct": 3.03,
+          "MgO_pct": 1.48,
+          "LOI_pct": 4.29
+        }
+      },
+      {
+        "stream_id": 11,
+        "name": "Stage 5 Flue Gas to Stage 4",
+        "source": {
+          "block": "CYC_05",
+          "port": "out_gas"
+        },
+        "target": {
+          "block": "CYC_04",
+          "port": "in_gas"
+        },
+        "phase": "GAS",
+        "mass_flow_tph": 323.314,
+        "volume_flow_nm3h": 241279.3,
+        "temperature_c": 878.86,
+        "pressure_mbar": -33,
+        "enthalpy_gjh": 425.127,
+        "composition": {
+          "CO2_pct": 38.1,
+          "O2_pct": 2.8,
+          "N2_pct": 62,
+          "H2O_pct": 7.2
+        }
+      },
+      {
+        "stream_id": 12,
+        "name": "Stage 4 Flue Gas to Stage 3",
+        "source": {
+          "block": "CYC_04",
+          "port": "out_gas"
+        },
+        "target": {
+          "block": "CYC_03",
+          "port": "in_gas"
+        },
+        "phase": "GAS",
+        "mass_flow_tph": 327.328,
+        "volume_flow_nm3h": 244274.7,
+        "temperature_c": 817.73,
+        "pressure_mbar": -38.8,
+        "enthalpy_gjh": 404.28,
+        "composition": {
+          "CO2_pct": 38.1,
+          "O2_pct": 2.8,
+          "N2_pct": 62,
+          "H2O_pct": 7.2
+        }
+      },
+      {
+        "stream_id": 13,
+        "name": "Stage 3 Flue Gas to Stage 2",
+        "source": {
+          "block": "CYC_03",
+          "port": "out_gas"
+        },
+        "target": {
+          "block": "CYC_02",
+          "port": "in_gas"
+        },
+        "phase": "GAS",
+        "mass_flow_tph": 331.403,
+        "volume_flow_nm3h": 247315.7,
+        "temperature_c": 736.54,
+        "pressure_mbar": -44.3,
+        "enthalpy_gjh": 374.928,
+        "composition": {
+          "CO2_pct": 38.1,
+          "O2_pct": 2.8,
+          "N2_pct": 62,
+          "H2O_pct": 7.2
+        }
+      },
+      {
+        "stream_id": 14,
+        "name": "Stage 2 Flue Gas to Stage 1",
+        "source": {
+          "block": "CYC_02",
+          "port": "out_gas"
+        },
+        "target": {
+          "block": "CYC_01",
+          "port": "in_gas"
+        },
+        "phase": "GAS",
+        "mass_flow_tph": 335.54,
+        "volume_flow_nm3h": 250403.1,
+        "temperature_c": 601.06,
+        "pressure_mbar": -49.8,
+        "enthalpy_gjh": 322.78,
+        "composition": {
+          "CO2_pct": 38.1,
+          "O2_pct": 2.8,
+          "N2_pct": 62,
+          "H2O_pct": 7.2
+        }
+      },
+      {
+        "stream_id": 15,
+        "name": "Preheater Top Gas to ID Fan",
+        "source": {
+          "block": "CYC_01",
+          "port": "out_gas"
+        },
+        "target": {
+          "block": "ID_FAN_01",
+          "port": "in_gas"
+        },
+        "phase": "GAS",
+        "mass_flow_tph": 339.74,
+        "volume_flow_nm3h": 253537.4,
+        "temperature_c": 296.17,
+        "pressure_mbar": -54.8,
+        "enthalpy_gjh": 204.261,
+        "composition": {
+          "CO2_pct": 38.1,
+          "O2_pct": 2.8,
+          "N2_pct": 62,
+          "H2O_pct": 7.2
+        }
+      },
+      {
+        "stream_id": 16,
+        "name": "Decarbonated Meal to Kiln",
+        "source": {
+          "block": "CYC_05",
+          "port": "out_meal"
+        },
+        "target": {
+          "block": "KILN_01",
+          "port": "in_meal_calcined"
+        },
+        "phase": "SOLID",
+        "mass_flow_tph": 179.699,
+        "volume_flow_nm3h": null,
+        "temperature_c": 858.86,
+        "pressure_mbar": -28,
+        "enthalpy_gjh": 206.736,
+        "composition": {
+          "CaO_pct": 56.74,
+          "CaCO3_pct": 9.76,
+          "SiO2_pct": 19.5,
+          "Al2O3_pct": 4.98,
+          "Fe2O3_pct": 3.03,
+          "MgO_pct": 1.48,
+          "LOI_pct": 4.29
+        }
+      },
+      {
+        "stream_id": 17,
+        "name": "Kiln Main Burner Flame Fuel",
+        "source": {
+          "block": "FUEL_KILN",
+          "port": "out_fuel"
+        },
+        "target": {
+          "block": "KILN_01",
+          "port": "in_flame_fuel"
+        },
+        "phase": "FUEL",
+        "mass_flow_tph": 7.2,
+        "volume_flow_nm3h": null,
+        "temperature_c": 25,
+        "pressure_mbar": 0,
+        "enthalpy_gjh": 228.595,
+        "composition": {
+          "fuel_name": "Petcoke Main",
+          "lhv_mj_kg": 31.4,
+          "ash_pct": 0.8,
+          "moisture_pct": 1
+        }
+      },
+      {
+        "stream_id": 18,
+        "name": "Hot Secondary Air to Kiln",
+        "source": {
+          "block": "COOLER_01",
+          "port": "out_secondary_air"
+        },
+        "target": {
+          "block": "KILN_01",
+          "port": "in_secondary_air"
+        },
+        "phase": "AIR",
+        "mass_flow_tph": 84.337,
+        "volume_flow_nm3h": 65225.8,
+        "temperature_c": 925.8,
+        "pressure_mbar": -0.5,
+        "enthalpy_gjh": 116.09,
+        "composition": {
+          "O2_pct": 20.9,
+          "N2_pct": 79.1
+        }
+      },
+      {
+        "stream_id": 19,
+        "name": "Hot Clinker to Grate Cooler",
+        "source": {
+          "block": "KILN_01",
+          "port": "out_clinker"
+        },
+        "target": {
+          "block": "COOLER_01",
+          "port": "in_clinker_hot"
+        },
+        "phase": "SOLID",
+        "mass_flow_tph": 172.045,
+        "volume_flow_nm3h": null,
+        "temperature_c": 1392.23,
+        "pressure_mbar": 0,
+        "enthalpy_gjh": 323.196,
+        "composition": {
+          "C3S_pct": 58.2,
+          "C2S_pct": 17.8,
+          "C3A_pct": 7.8,
+          "C4AF_pct": 10.2,
+          "Free_CaO_pct": 1.96,
+          "MgO_pct": 1.4
+        }
+      },
+      {
+        "stream_id": 20,
+        "name": "Cooled Clinker to Dome Silo",
+        "source": {
+          "block": "COOLER_01",
+          "port": "out_clinker_cool"
+        },
+        "target": {
+          "block": "SILO_CLINKER",
+          "port": "in_solid"
+        },
+        "phase": "SOLID",
+        "mass_flow_tph": 172.045,
+        "volume_flow_nm3h": null,
+        "temperature_c": 95,
+        "pressure_mbar": 0,
+        "enthalpy_gjh": 54.274,
+        "composition": {
+          "C3S_pct": 58.2,
+          "C2S_pct": 17.8,
+          "C3A_pct": 7.8,
+          "C4AF_pct": 10.2,
+          "Free_CaO_pct": 1.96,
+          "MgO_pct": 1.4
+        }
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "FEED_01",
+      "name": "Raw Meal Feeder",
+      "type": "GravimetricFeeder",
+      "category": "Feeding",
+      "position": {
+        "x": -140,
+        "y": 160
+      },
+      "parameters": {
+        "nominal_rate_tph": 280,
+        "time_constant_s": 1.5,
+        "temperature_c": 60,
+        "moisture_pct": 0.8,
+        "caco3_pct": 76.85,
+        "mgco3_pct": 2.15,
+        "sio2_pct": 13.5,
+        "al2o3_pct": 3.45,
+        "fe2o3_pct": 2.1
+      },
+      "state": {
+        "actual_feed_rate_tph": 280,
+        "accumulated_tonnage_t": 0,
+        "feeder_status": "RUNNING",
+        "caco3_pct": 76.85,
+        "loi_pct": 34.91,
+        "lsf": 99.4,
+        "heat_loss_gjh": 0
+      },
+      "ports": {
+        "in_material": {
+          "name": "in_material",
+          "direction": "IN",
+          "phase": "SOLID",
+          "description": "Optional upstream silo feed",
+          "required": false,
+          "connected_stream_id": null
+        },
+        "out_solid": {
+          "name": "out_solid",
+          "direction": "OUT",
+          "phase": "SOLID",
+          "description": "Controlled raw meal flow",
+          "required": true,
+          "connected_stream_id": 1
+        }
+      }
+    },
+    {
+      "id": "CYC_01",
+      "name": "Preheater Cyclone C1 (Top)",
+      "type": "CycloneStage",
+      "category": "Separation",
+      "position": {
+        "x": 260,
+        "y": 140
+      },
+      "parameters": {
+        "stage_number": 1,
+        "separation_efficiency": 0.985,
+        "thermal_effectiveness": 0.85,
+        "dp_mbar": 5,
+        "heat_loss_pct": 1.5
+      },
+      "state": {
+        "gas_temp_c": 296.2,
+        "meal_temp_c": 519.9,
+        "pressure_drop_mbar": 5,
+        "heat_transferred_gjh": 109.36,
+        "heat_loss_gjh": 3.19,
+        "dust_carryover_tph": 4.2
+      },
+      "ports": {
+        "in_gas": {
+          "name": "in_gas",
+          "direction": "IN",
+          "phase": "GAS",
+          "description": "Rising hot flue gas from stage below",
+          "required": true,
+          "connected_stream_id": 14
+        },
+        "in_meal": {
+          "name": "in_meal",
+          "direction": "IN",
+          "phase": "SOLID",
+          "description": "Descending meal from stage above or feeder",
+          "required": true,
+          "connected_stream_id": 1
+        },
+        "out_gas": {
+          "name": "out_gas",
+          "direction": "OUT",
+          "phase": "GAS",
+          "description": "Cooled gas exiting to upper stage or ID fan",
+          "required": true,
+          "connected_stream_id": 15
+        },
+        "out_meal": {
+          "name": "out_meal",
+          "direction": "OUT",
+          "phase": "SOLID",
+          "description": "Preheated meal discharging from dipleg",
+          "required": true,
+          "connected_stream_id": 2
+        }
+      }
+    },
+    {
+      "id": "CYC_02",
+      "name": "Preheater Cyclone C2",
+      "type": "CycloneStage",
+      "category": "Separation",
+      "position": {
+        "x": 260,
+        "y": 300
+      },
+      "parameters": {
+        "stage_number": 2,
+        "separation_efficiency": 0.985,
+        "thermal_effectiveness": 0.82,
+        "dp_mbar": 5.5,
+        "heat_loss_pct": 1.5
+      },
+      "state": {
+        "gas_temp_c": 601.1,
+        "meal_temp_c": 697.5,
+        "pressure_drop_mbar": 5.5,
+        "heat_transferred_gjh": 46.33,
+        "heat_loss_gjh": 3.96,
+        "dust_carryover_tph": 4.14
+      },
+      "ports": {
+        "in_gas": {
+          "name": "in_gas",
+          "direction": "IN",
+          "phase": "GAS",
+          "description": "Rising hot flue gas from stage below",
+          "required": true,
+          "connected_stream_id": 13
+        },
+        "in_meal": {
+          "name": "in_meal",
+          "direction": "IN",
+          "phase": "SOLID",
+          "description": "Descending meal from stage above or feeder",
+          "required": true,
+          "connected_stream_id": 2
+        },
+        "out_gas": {
+          "name": "out_gas",
+          "direction": "OUT",
+          "phase": "GAS",
+          "description": "Cooled gas exiting to upper stage or ID fan",
+          "required": true,
+          "connected_stream_id": 14
+        },
+        "out_meal": {
+          "name": "out_meal",
+          "direction": "OUT",
+          "phase": "SOLID",
+          "description": "Preheated meal discharging from dipleg",
+          "required": true,
+          "connected_stream_id": 3
+        }
+      }
+    },
+    {
+      "id": "CYC_03",
+      "name": "Preheater Cyclone C3",
+      "type": "CycloneStage",
+      "category": "Separation",
+      "position": {
+        "x": 260,
+        "y": 460
+      },
+      "parameters": {
+        "stage_number": 3,
+        "separation_efficiency": 0.985,
+        "thermal_effectiveness": 0.8,
+        "dp_mbar": 5.5,
+        "heat_loss_pct": 1.5
+      },
+      "state": {
+        "gas_temp_c": 736.5,
+        "meal_temp_c": 793.7,
+        "pressure_drop_mbar": 5.5,
+        "heat_transferred_gjh": 25.68,
+        "heat_loss_gjh": 4.41,
+        "dust_carryover_tph": 4.07
+      },
+      "ports": {
+        "in_gas": {
+          "name": "in_gas",
+          "direction": "IN",
+          "phase": "GAS",
+          "description": "Rising hot flue gas from stage below",
+          "required": true,
+          "connected_stream_id": 12
+        },
+        "in_meal": {
+          "name": "in_meal",
+          "direction": "IN",
+          "phase": "SOLID",
+          "description": "Descending meal from stage above or feeder",
+          "required": true,
+          "connected_stream_id": 3
+        },
+        "out_gas": {
+          "name": "out_gas",
+          "direction": "OUT",
+          "phase": "GAS",
+          "description": "Cooled gas exiting to upper stage or ID fan",
+          "required": true,
+          "connected_stream_id": 13
+        },
+        "out_meal": {
+          "name": "out_meal",
+          "direction": "OUT",
+          "phase": "SOLID",
+          "description": "Preheated meal discharging from dipleg",
+          "required": true,
+          "connected_stream_id": 4
+        }
+      }
+    },
+    {
+      "id": "CYC_04",
+      "name": "Preheater Cyclone C4",
+      "type": "CycloneStage",
+      "category": "Separation",
+      "position": {
+        "x": 260,
+        "y": 660
+      },
+      "parameters": {
+        "stage_number": 4,
+        "separation_efficiency": 0.985,
+        "thermal_effectiveness": 0.78,
+        "dp_mbar": 5.8,
+        "heat_loss_pct": 1.5
+      },
+      "state": {
+        "gas_temp_c": 817.7,
+        "meal_temp_c": 860.1,
+        "pressure_drop_mbar": 5.8,
+        "heat_transferred_gjh": 17.83,
+        "heat_loss_gjh": 4.73,
+        "dust_carryover_tph": 4.01
+      },
+      "ports": {
+        "in_gas": {
+          "name": "in_gas",
+          "direction": "IN",
+          "phase": "GAS",
+          "description": "Rising hot flue gas from stage below",
+          "required": true,
+          "connected_stream_id": 11
+        },
+        "in_meal": {
+          "name": "in_meal",
+          "direction": "IN",
+          "phase": "SOLID",
+          "description": "Descending meal from stage above or feeder",
+          "required": true,
+          "connected_stream_id": 4
+        },
+        "out_gas": {
+          "name": "out_gas",
+          "direction": "OUT",
+          "phase": "GAS",
+          "description": "Cooled gas exiting to upper stage or ID fan",
+          "required": true,
+          "connected_stream_id": 12
+        },
+        "out_meal": {
+          "name": "out_meal",
+          "direction": "OUT",
+          "phase": "SOLID",
+          "description": "Preheated meal discharging from dipleg",
+          "required": true,
+          "connected_stream_id": 5
+        }
+      }
+    },
+    {
+      "id": "CALC_01",
+      "name": "Inline Precalciner Reactor",
+      "type": "CalcinerReactor",
+      "category": "Combustion",
+      "position": {
+        "x": 760,
+        "y": 700
+      },
+      "parameters": {
+        "volume_m3": 1100,
+        "design_calcination_pct": 92.5,
+        "combustion_efficiency": 99,
+        "heat_loss_pct": 3.5,
+        "target_temp_c": 865
+      },
+      "state": {
+        "calciner_temp_c": 868.9,
+        "calcination_degree_pct": 91.2,
+        "co2_released_tph": 81.23,
+        "heat_input_mw": 90.75,
+        "heat_loss_gjh": 23.68,
+        "apparent_calcination_heat_gjh": 329.22
+      },
+      "ports": {
+        "in_meal": {
+          "name": "in_meal",
+          "direction": "IN",
+          "phase": "SOLID",
+          "description": "Preheated raw meal from stage 4",
+          "required": true,
+          "connected_stream_id": 5
+        },
+        "in_gas": {
+          "name": "in_gas",
+          "direction": "IN",
+          "phase": "GAS",
+          "description": "Kiln riser exhaust gas",
+          "required": false,
+          "connected_stream_id": 8
+        },
+        "in_tertiary_air": {
+          "name": "in_tertiary_air",
+          "direction": "IN",
+          "phase": "AIR",
+          "description": "Tertiary air from grate cooler",
+          "required": false,
+          "connected_stream_id": 7
+        },
+        "in_fuel": {
+          "name": "in_fuel",
+          "direction": "IN",
+          "phase": "FUEL",
+          "description": "Dosed fuel supply (petcoke / CDR)",
+          "required": true,
+          "connected_stream_id": 6
+        },
+        "out_gas": {
+          "name": "out_gas",
+          "direction": "OUT",
+          "phase": "GAS",
+          "description": "Calciner flue gas with released CO2",
+          "required": false,
+          "connected_stream_id": 9
+        },
+        "out_meal": {
+          "name": "out_meal",
+          "direction": "OUT",
+          "phase": "SOLID",
+          "description": "Decarbonated raw meal (90-95% CaO)",
+          "required": false,
+          "connected_stream_id": 10
+        },
+        "out_gas_meal_mix": {
+          "name": "out_gas_meal_mix",
+          "direction": "OUT",
+          "phase": "GAS",
+          "description": "Combined suspension to stage 5 cyclone",
+          "required": false,
+          "connected_stream_id": null
+        }
+      }
+    },
+    {
+      "id": "FUEL_PC",
+      "name": "Precalciner Fuel Dosing",
+      "type": "FuelFeeder",
+      "category": "Feeding",
+      "position": {
+        "x": 520,
+        "y": 560
+      },
+      "parameters": {
+        "fuel_name": "Petcoke & CDR",
+        "nominal_rate_tph": 12,
+        "lhv_mj_kg": 27.5,
+        "ash_pct": 0.8,
+        "moisture_pct": 1
+      },
+      "state": {
+        "actual_rate_tph": 12,
+        "heat_input_mw": 91.67,
+        "heat_input_gjh": 330,
+        "heat_loss_gjh": 0
+      },
+      "ports": {
+        "out_fuel": {
+          "name": "out_fuel",
+          "direction": "OUT",
+          "phase": "FUEL",
+          "description": "Dosed fuel supply to burner/calciner",
+          "required": true,
+          "connected_stream_id": 6
+        }
+      }
+    },
+    {
+      "id": "CYC_05",
+      "name": "Preheater Cyclone C5 (Bottom)",
+      "type": "CycloneStage",
+      "category": "Separation",
+      "position": {
+        "x": 260,
+        "y": 920
+      },
+      "parameters": {
+        "stage_number": 5,
+        "separation_efficiency": 0.985,
+        "thermal_effectiveness": 0.82,
+        "dp_mbar": 5,
+        "heat_loss_pct": 1.5
+      },
+      "state": {
+        "gas_temp_c": 878.9,
+        "meal_temp_c": 858.9,
+        "pressure_drop_mbar": 5,
+        "heat_transferred_gjh": 0,
+        "heat_loss_gjh": 4.62,
+        "dust_carryover_tph": 2.74
+      },
+      "ports": {
+        "in_gas": {
+          "name": "in_gas",
+          "direction": "IN",
+          "phase": "GAS",
+          "description": "Rising hot flue gas from stage below",
+          "required": true,
+          "connected_stream_id": 9
+        },
+        "in_meal": {
+          "name": "in_meal",
+          "direction": "IN",
+          "phase": "SOLID",
+          "description": "Descending meal from stage above or feeder",
+          "required": true,
+          "connected_stream_id": 10
+        },
+        "out_gas": {
+          "name": "out_gas",
+          "direction": "OUT",
+          "phase": "GAS",
+          "description": "Cooled gas exiting to upper stage or ID fan",
+          "required": true,
+          "connected_stream_id": 11
+        },
+        "out_meal": {
+          "name": "out_meal",
+          "direction": "OUT",
+          "phase": "SOLID",
+          "description": "Preheated meal discharging from dipleg",
+          "required": true,
+          "connected_stream_id": 16
+        }
+      }
+    },
+    {
+      "id": "KILN_01",
+      "name": "Rotary Kiln 3 (72m x 4.6m)",
+      "type": "RotaryKiln",
+      "category": "Pyroprocess",
+      "position": {
+        "x": 720,
+        "y": 1040
+      },
+      "parameters": {
+        "length_m": 72,
+        "diameter_m": 4.6,
+        "slope_pct": 3.5,
+        "speed_rpm": 3.79,
+        "target_burning_zone_c": 1435,
+        "shell_heat_loss_mw": 14.8
+      },
+      "state": {
+        "burning_zone_temp_c": 1407.2,
+        "kiln_inlet_gas_temp_c": 1041.4,
+        "kiln_drive_torque_kwn": 182,
+        "bed_residence_time_min": 20.6,
+        "free_lime_pct": 1.96,
+        "c3s_pct": 58.2,
+        "clinker_rate_tph": 172.04,
+        "heat_loss_gjh": 53.28
+      },
+      "ports": {
+        "in_meal_calcined": {
+          "name": "in_meal_calcined",
+          "direction": "IN",
+          "phase": "SOLID",
+          "description": "Calcined hot meal from calciner/bottom cyclone",
+          "required": true,
+          "connected_stream_id": 16
+        },
+        "in_flame_fuel": {
+          "name": "in_flame_fuel",
+          "direction": "IN",
+          "phase": "FUEL",
+          "description": "Kiln main burner fuel (petcoke / alternative fuels)",
+          "required": true,
+          "connected_stream_id": 17
+        },
+        "in_secondary_air": {
+          "name": "in_secondary_air",
+          "direction": "IN",
+          "phase": "AIR",
+          "description": "Preheated secondary air from cooler hood",
+          "required": true,
+          "connected_stream_id": 18
+        },
+        "in_primary_air": {
+          "name": "in_primary_air",
+          "direction": "IN",
+          "phase": "AIR",
+          "description": "Burner primary momentum air",
+          "required": false,
+          "connected_stream_id": null
+        },
+        "out_clinker": {
+          "name": "out_clinker",
+          "direction": "OUT",
+          "phase": "SOLID",
+          "description": "Sintered hot clinker discharging into grate cooler",
+          "required": true,
+          "connected_stream_id": 19
+        },
+        "out_kiln_gas": {
+          "name": "out_kiln_gas",
+          "direction": "OUT",
+          "phase": "GAS",
+          "description": "Kiln exhaust flue gas discharging into calciner riser",
+          "required": true,
+          "connected_stream_id": 8
+        }
+      }
+    },
+    {
+      "id": "FUEL_KILN",
+      "name": "Kiln Main Burner Fuel",
+      "type": "FuelFeeder",
+      "category": "Feeding",
+      "position": {
+        "x": 440,
+        "y": 1100
+      },
+      "parameters": {
+        "fuel_name": "Petcoke Main",
+        "nominal_rate_tph": 7.2,
+        "lhv_mj_kg": 31.4,
+        "ash_pct": 0.8,
+        "moisture_pct": 1
+      },
+      "state": {
+        "actual_rate_tph": 7.2,
+        "heat_input_mw": 62.8,
+        "heat_input_gjh": 226.08,
+        "heat_loss_gjh": 0
+      },
+      "ports": {
+        "out_fuel": {
+          "name": "out_fuel",
+          "direction": "OUT",
+          "phase": "FUEL",
+          "description": "Dosed fuel supply to burner/calciner",
+          "required": true,
+          "connected_stream_id": 17
+        }
+      }
+    },
+    {
+      "id": "COOLER_01",
+      "name": "Hydraulic Grate Cooler",
+      "type": "GrateCooler",
+      "category": "Cooling",
+      "position": {
+        "x": 1180,
+        "y": 1040
+      },
+      "parameters": {
+        "grate_area_m2": 105,
+        "cooling_air_total_tph": 348.5,
+        "secondary_air_split_pct": 24.2,
+        "tertiary_air_split_pct": 36.8,
+        "recuperation_efficiency": 0.74,
+        "clinker_target_temp_c": 95
+      },
+      "state": {
+        "secondary_air_temp_c": 925.8,
+        "tertiary_air_temp_c": 799.7,
+        "cooler_vent_temp_c": 231.6,
+        "clinker_exit_temp_c": 95,
+        "recuperated_heat_gjh": 179.66,
+        "cooler_hydraulic_press_bar": 92,
+        "heat_loss_gjh": 9.71
+      },
+      "ports": {
+        "in_clinker_hot": {
+          "name": "in_clinker_hot",
+          "direction": "IN",
+          "phase": "SOLID",
+          "description": "Hot clinker discharging from rotary kiln",
+          "required": true,
+          "connected_stream_id": 19
+        },
+        "in_cooling_air": {
+          "name": "in_cooling_air",
+          "direction": "IN",
+          "phase": "AIR",
+          "description": "Ambient cooling air from under-grate fans",
+          "required": false,
+          "connected_stream_id": null
+        },
+        "out_clinker_cool": {
+          "name": "out_clinker_cool",
+          "direction": "OUT",
+          "phase": "SOLID",
+          "description": "Cooled clinker discharged to pan conveyor & silo",
+          "required": true,
+          "connected_stream_id": 20
+        },
+        "out_secondary_air": {
+          "name": "out_secondary_air",
+          "direction": "OUT",
+          "phase": "AIR",
+          "description": "Hot secondary combustion air to kiln burner",
+          "required": true,
+          "connected_stream_id": 18
+        },
+        "out_tertiary_air": {
+          "name": "out_tertiary_air",
+          "direction": "OUT",
+          "phase": "AIR",
+          "description": "Hot tertiary combustion air to precalciner",
+          "required": true,
+          "connected_stream_id": 7
+        },
+        "out_vent_air": {
+          "name": "out_vent_air",
+          "direction": "OUT",
+          "phase": "AIR",
+          "description": "Excess cooling air to cooler baghouse filter",
+          "required": false,
+          "connected_stream_id": null
+        }
+      }
+    },
+    {
+      "id": "ID_FAN_01",
+      "name": "Main ID Process Fan",
+      "type": "IDFan",
+      "category": "Draft / Fans",
+      "position": {
+        "x": 680,
+        "y": 120
+      },
+      "parameters": {
+        "design_flow_nm3h": 350000,
+        "design_dp_mbar": 65,
+        "damper_pct": 82,
+        "motor_rated_kw": 2500,
+        "fan_efficiency": 0.78
+      },
+      "state": {
+        "actual_flow_nm3h": 253537.4,
+        "fan_dp_mbar": 45.48,
+        "motor_power_kw": 855.8,
+        "motor_current_a": 813.8,
+        "inlet_draft_mbar": -54.8,
+        "outlet_draft_mbar": -9.3,
+        "heat_loss_gjh": 0
+      },
+      "ports": {
+        "in_gas": {
+          "name": "in_gas",
+          "direction": "IN",
+          "phase": "GAS",
+          "description": "Flue gas suction from preheater top stage",
+          "required": true,
+          "connected_stream_id": 15
+        },
+        "out_gas": {
+          "name": "out_gas",
+          "direction": "OUT",
+          "phase": "GAS",
+          "description": "Exhaust gas discharge to baghouse / main stack",
+          "required": true,
+          "connected_stream_id": null
+        }
+      }
+    },
+    {
+      "id": "SILO_CLINKER",
+      "name": "Clinker Storage Dome",
+      "type": "SiloStorage",
+      "category": "Feeding",
+      "position": {
+        "x": 1780,
+        "y": 820
+      },
+      "parameters": {
+        "capacity_tons": 50000,
+        "initial_level_pct": 45
+      },
+      "state": {
+        "level_pct": 45,
+        "stored_tons": 22500,
+        "heat_loss_gjh": 0
+      },
+      "ports": {
+        "in_solid": {
+          "name": "in_solid",
+          "direction": "IN",
+          "phase": "SOLID",
+          "description": "Inlet material from elevator",
+          "required": true,
+          "connected_stream_id": 20
+        },
+        "out_solid": {
+          "name": "out_solid",
+          "direction": "OUT",
+          "phase": "SOLID",
+          "description": "Discharge to downstream process",
+          "required": true,
+          "connected_stream_id": null
+        }
+      }
+    }
+  ],
+  "connections": [
+    {
+      "stream_id": 1,
+      "name": "Raw Meal Total Feed",
+      "source": {
+        "block": "FEED_01",
+        "port": "out_solid"
+      },
+      "target": {
+        "block": "CYC_01",
+        "port": "in_meal"
+      },
+      "phase": "SOLID",
+      "mass_flow_tph": 280,
+      "volume_flow_nm3h": null,
+      "temperature_c": 60,
+      "pressure_mbar": 0,
+      "enthalpy_gjh": 79.229,
+      "composition": {
+        "CaCO3_pct": 76.85,
+        "MgCO3_pct": 2.15,
+        "SiO2_pct": 13.5,
+        "Al2O3_pct": 3.45,
+        "Fe2O3_pct": 2.1,
+        "Moisture_pct": 0.8,
+        "LOI_pct": 34.91
+      }
+    },
+    {
+      "stream_id": 2,
+      "name": "Stage 1 Meal to Stage 2",
+      "source": {
+        "block": "CYC_01",
+        "port": "out_meal"
+      },
+      "target": {
+        "block": "CYC_02",
+        "port": "in_meal"
+      },
+      "phase": "SOLID",
+      "mass_flow_tph": 275.8,
+      "volume_flow_nm3h": null,
+      "temperature_c": 519.85,
+      "pressure_mbar": -49.8,
+      "enthalpy_gjh": 206.808,
+      "composition": {
+        "CaCO3_pct": 76.85,
+        "MgCO3_pct": 2.15,
+        "SiO2_pct": 13.5,
+        "Al2O3_pct": 3.45,
+        "Fe2O3_pct": 2.1,
+        "Moisture_pct": 0.8,
+        "LOI_pct": 34.91
+      }
+    },
+    {
+      "stream_id": 3,
+      "name": "Stage 2 Meal to Stage 3",
+      "source": {
+        "block": "CYC_02",
+        "port": "out_meal"
+      },
+      "target": {
+        "block": "CYC_03",
+        "port": "in_meal"
+      },
+      "phase": "SOLID",
+      "mass_flow_tph": 271.663,
+      "volume_flow_nm3h": null,
+      "temperature_c": 697.51,
+      "pressure_mbar": -44.3,
+      "enthalpy_gjh": 259.161,
+      "composition": {
+        "CaCO3_pct": 76.85,
+        "MgCO3_pct": 2.15,
+        "SiO2_pct": 13.5,
+        "Al2O3_pct": 3.45,
+        "Fe2O3_pct": 2.1,
+        "Moisture_pct": 0.8,
+        "LOI_pct": 34.91
+      }
+    },
+    {
+      "stream_id": 4,
+      "name": "Stage 3 Meal to Stage 4",
+      "source": {
+        "block": "CYC_03",
+        "port": "out_meal"
+      },
+      "target": {
+        "block": "CYC_04",
+        "port": "in_meal"
+      },
+      "phase": "SOLID",
+      "mass_flow_tph": 267.588,
+      "volume_flow_nm3h": null,
+      "temperature_c": 793.68,
+      "pressure_mbar": -38.8,
+      "enthalpy_gjh": 286.299,
+      "composition": {
+        "CaCO3_pct": 76.85,
+        "MgCO3_pct": 2.15,
+        "SiO2_pct": 13.5,
+        "Al2O3_pct": 3.45,
+        "Fe2O3_pct": 2.1,
+        "Moisture_pct": 0.8,
+        "LOI_pct": 34.91
+      }
+    },
+    {
+      "stream_id": 5,
+      "name": "Stage 4 Meal to Calciner",
+      "source": {
+        "block": "CYC_04",
+        "port": "out_meal"
+      },
+      "target": {
+        "block": "CALC_01",
+        "port": "in_meal"
+      },
+      "phase": "SOLID",
+      "mass_flow_tph": 263.574,
+      "volume_flow_nm3h": null,
+      "temperature_c": 860.12,
+      "pressure_mbar": -33,
+      "enthalpy_gjh": 303.693,
+      "composition": {
+        "CaCO3_pct": 76.85,
+        "MgCO3_pct": 2.15,
+        "SiO2_pct": 13.5,
+        "Al2O3_pct": 3.45,
+        "Fe2O3_pct": 2.1,
+        "Moisture_pct": 0.8,
+        "LOI_pct": 34.91
+      }
+    },
+    {
+      "stream_id": 6,
+      "name": "Precalciner Fuel Supply",
+      "source": {
+        "block": "FUEL_PC",
+        "port": "out_fuel"
+      },
+      "target": {
+        "block": "CALC_01",
+        "port": "in_fuel"
+      },
+      "phase": "FUEL",
+      "mass_flow_tph": 12,
+      "volume_flow_nm3h": null,
+      "temperature_c": 25,
+      "pressure_mbar": 0,
+      "enthalpy_gjh": 334.191,
+      "composition": {
+        "fuel_name": "Petcoke & CDR",
+        "lhv_mj_kg": 27.5,
+        "ash_pct": 0.8,
+        "moisture_pct": 1
+      }
+    },
+    {
+      "stream_id": 7,
+      "name": "Tertiary Air Duct",
+      "source": {
+        "block": "COOLER_01",
+        "port": "out_tertiary_air"
+      },
+      "target": {
+        "block": "CALC_01",
+        "port": "in_tertiary_air"
+      },
+      "phase": "AIR",
+      "mass_flow_tph": 128.248,
+      "volume_flow_nm3h": 99186.4,
+      "temperature_c": 799.69,
+      "pressure_mbar": -5,
+      "enthalpy_gjh": 155.432,
+      "composition": {
+        "O2_pct": 20.9,
+        "N2_pct": 79.1
+      }
+    },
+    {
+      "stream_id": 8,
+      "name": "Kiln Inlet Exhaust Gas",
+      "source": {
+        "block": "KILN_01",
+        "port": "out_kiln_gas"
+      },
+      "target": {
+        "block": "CALC_01",
+        "port": "in_gas"
+      },
+      "phase": "GAS",
+      "mass_flow_tph": 99.191,
+      "volume_flow_nm3h": 74023.2,
+      "temperature_c": 1041.4,
+      "pressure_mbar": -1.8,
+      "enthalpy_gjh": 151.884,
+      "composition": {
+        "O2_pct": 2.2,
+        "CO2_pct": 22.5,
+        "N2_pct": 71,
+        "H2O_pct": 4.3
+      }
+    },
+    {
+      "stream_id": 9,
+      "name": "Calciner Flue Gas to Stage 5",
+      "source": {
+        "block": "CALC_01",
+        "port": "out_gas"
+      },
+      "target": {
+        "block": "CYC_05",
+        "port": "in_gas"
+      },
+      "phase": "GAS",
+      "mass_flow_tph": 320.578,
+      "volume_flow_nm3h": 239237.2,
+      "temperature_c": 868.86,
+      "pressure_mbar": -28,
+      "enthalpy_gjh": 417.257,
+      "composition": {
+        "CO2_pct": 38.1,
+        "O2_pct": 2.8,
+        "N2_pct": 62,
+        "H2O_pct": 7.2
+      }
+    },
+    {
+      "stream_id": 10,
+      "name": "Calciner Decarbonated Meal to Stage 5",
+      "source": {
+        "block": "CALC_01",
+        "port": "out_meal"
+      },
+      "target": {
+        "block": "CYC_05",
+        "port": "in_meal"
+      },
+      "phase": "SOLID",
+      "mass_flow_tph": 182.436,
+      "volume_flow_nm3h": null,
+      "temperature_c": 868.86,
+      "pressure_mbar": -28,
+      "enthalpy_gjh": 212.174,
+      "composition": {
+        "CaO_pct": 56.74,
+        "CaCO3_pct": 9.76,
+        "SiO2_pct": 19.5,
+        "Al2O3_pct": 4.98,
+        "Fe2O3_pct": 3.03,
+        "MgO_pct": 1.48,
+        "LOI_pct": 4.29
+      }
+    },
+    {
+      "stream_id": 11,
+      "name": "Stage 5 Flue Gas to Stage 4",
+      "source": {
+        "block": "CYC_05",
+        "port": "out_gas"
+      },
+      "target": {
+        "block": "CYC_04",
+        "port": "in_gas"
+      },
+      "phase": "GAS",
+      "mass_flow_tph": 323.314,
+      "volume_flow_nm3h": 241279.3,
+      "temperature_c": 878.86,
+      "pressure_mbar": -33,
+      "enthalpy_gjh": 425.127,
+      "composition": {
+        "CO2_pct": 38.1,
+        "O2_pct": 2.8,
+        "N2_pct": 62,
+        "H2O_pct": 7.2
+      }
+    },
+    {
+      "stream_id": 12,
+      "name": "Stage 4 Flue Gas to Stage 3",
+      "source": {
+        "block": "CYC_04",
+        "port": "out_gas"
+      },
+      "target": {
+        "block": "CYC_03",
+        "port": "in_gas"
+      },
+      "phase": "GAS",
+      "mass_flow_tph": 327.328,
+      "volume_flow_nm3h": 244274.7,
+      "temperature_c": 817.73,
+      "pressure_mbar": -38.8,
+      "enthalpy_gjh": 404.28,
+      "composition": {
+        "CO2_pct": 38.1,
+        "O2_pct": 2.8,
+        "N2_pct": 62,
+        "H2O_pct": 7.2
+      }
+    },
+    {
+      "stream_id": 13,
+      "name": "Stage 3 Flue Gas to Stage 2",
+      "source": {
+        "block": "CYC_03",
+        "port": "out_gas"
+      },
+      "target": {
+        "block": "CYC_02",
+        "port": "in_gas"
+      },
+      "phase": "GAS",
+      "mass_flow_tph": 331.403,
+      "volume_flow_nm3h": 247315.7,
+      "temperature_c": 736.54,
+      "pressure_mbar": -44.3,
+      "enthalpy_gjh": 374.928,
+      "composition": {
+        "CO2_pct": 38.1,
+        "O2_pct": 2.8,
+        "N2_pct": 62,
+        "H2O_pct": 7.2
+      }
+    },
+    {
+      "stream_id": 14,
+      "name": "Stage 2 Flue Gas to Stage 1",
+      "source": {
+        "block": "CYC_02",
+        "port": "out_gas"
+      },
+      "target": {
+        "block": "CYC_01",
+        "port": "in_gas"
+      },
+      "phase": "GAS",
+      "mass_flow_tph": 335.54,
+      "volume_flow_nm3h": 250403.1,
+      "temperature_c": 601.06,
+      "pressure_mbar": -49.8,
+      "enthalpy_gjh": 322.78,
+      "composition": {
+        "CO2_pct": 38.1,
+        "O2_pct": 2.8,
+        "N2_pct": 62,
+        "H2O_pct": 7.2
+      }
+    },
+    {
+      "stream_id": 15,
+      "name": "Preheater Top Gas to ID Fan",
+      "source": {
+        "block": "CYC_01",
+        "port": "out_gas"
+      },
+      "target": {
+        "block": "ID_FAN_01",
+        "port": "in_gas"
+      },
+      "phase": "GAS",
+      "mass_flow_tph": 339.74,
+      "volume_flow_nm3h": 253537.4,
+      "temperature_c": 296.17,
+      "pressure_mbar": -54.8,
+      "enthalpy_gjh": 204.261,
+      "composition": {
+        "CO2_pct": 38.1,
+        "O2_pct": 2.8,
+        "N2_pct": 62,
+        "H2O_pct": 7.2
+      }
+    },
+    {
+      "stream_id": 16,
+      "name": "Decarbonated Meal to Kiln",
+      "source": {
+        "block": "CYC_05",
+        "port": "out_meal"
+      },
+      "target": {
+        "block": "KILN_01",
+        "port": "in_meal_calcined"
+      },
+      "phase": "SOLID",
+      "mass_flow_tph": 179.699,
+      "volume_flow_nm3h": null,
+      "temperature_c": 858.86,
+      "pressure_mbar": -28,
+      "enthalpy_gjh": 206.736,
+      "composition": {
+        "CaO_pct": 56.74,
+        "CaCO3_pct": 9.76,
+        "SiO2_pct": 19.5,
+        "Al2O3_pct": 4.98,
+        "Fe2O3_pct": 3.03,
+        "MgO_pct": 1.48,
+        "LOI_pct": 4.29
+      }
+    },
+    {
+      "stream_id": 17,
+      "name": "Kiln Main Burner Flame Fuel",
+      "source": {
+        "block": "FUEL_KILN",
+        "port": "out_fuel"
+      },
+      "target": {
+        "block": "KILN_01",
+        "port": "in_flame_fuel"
+      },
+      "phase": "FUEL",
+      "mass_flow_tph": 7.2,
+      "volume_flow_nm3h": null,
+      "temperature_c": 25,
+      "pressure_mbar": 0,
+      "enthalpy_gjh": 228.595,
+      "composition": {
+        "fuel_name": "Petcoke Main",
+        "lhv_mj_kg": 31.4,
+        "ash_pct": 0.8,
+        "moisture_pct": 1
+      }
+    },
+    {
+      "stream_id": 18,
+      "name": "Hot Secondary Air to Kiln",
+      "source": {
+        "block": "COOLER_01",
+        "port": "out_secondary_air"
+      },
+      "target": {
+        "block": "KILN_01",
+        "port": "in_secondary_air"
+      },
+      "phase": "AIR",
+      "mass_flow_tph": 84.337,
+      "volume_flow_nm3h": 65225.8,
+      "temperature_c": 925.8,
+      "pressure_mbar": -0.5,
+      "enthalpy_gjh": 116.09,
+      "composition": {
+        "O2_pct": 20.9,
+        "N2_pct": 79.1
+      }
+    },
+    {
+      "stream_id": 19,
+      "name": "Hot Clinker to Grate Cooler",
+      "source": {
+        "block": "KILN_01",
+        "port": "out_clinker"
+      },
+      "target": {
+        "block": "COOLER_01",
+        "port": "in_clinker_hot"
+      },
+      "phase": "SOLID",
+      "mass_flow_tph": 172.045,
+      "volume_flow_nm3h": null,
+      "temperature_c": 1392.23,
+      "pressure_mbar": 0,
+      "enthalpy_gjh": 323.196,
+      "composition": {
+        "C3S_pct": 58.2,
+        "C2S_pct": 17.8,
+        "C3A_pct": 7.8,
+        "C4AF_pct": 10.2,
+        "Free_CaO_pct": 1.96,
+        "MgO_pct": 1.4
+      }
+    },
+    {
+      "stream_id": 20,
+      "name": "Cooled Clinker to Dome Silo",
+      "source": {
+        "block": "COOLER_01",
+        "port": "out_clinker_cool"
+      },
+      "target": {
+        "block": "SILO_CLINKER",
+        "port": "in_solid"
+      },
+      "phase": "SOLID",
+      "mass_flow_tph": 172.045,
+      "volume_flow_nm3h": null,
+      "temperature_c": 95,
+      "pressure_mbar": 0,
+      "enthalpy_gjh": 54.274,
+      "composition": {
+        "C3S_pct": 58.2,
+        "C2S_pct": 17.8,
+        "C3A_pct": 7.8,
+        "C4AF_pct": 10.2,
+        "Free_CaO_pct": 1.96,
+        "MgO_pct": 1.4
+      }
+    }
+  ],
+  "telemetry": {
+    "FEED_01": {
+      "block_id": "FEED_01",
+      "name": "Raw Meal Feeder",
+      "type": "GravimetricFeeder",
+      "state": {
+        "actual_feed_rate_tph": 280,
+        "accumulated_tonnage_t": 0,
+        "feeder_status": "RUNNING",
+        "caco3_pct": 76.85,
+        "loi_pct": 34.91,
+        "lsf": 99.4,
+        "heat_loss_gjh": 0
+      },
+      "parameters": {
+        "nominal_rate_tph": 280,
+        "time_constant_s": 1.5,
+        "temperature_c": 60,
+        "moisture_pct": 0.8,
+        "caco3_pct": 76.85,
+        "mgco3_pct": 2.15,
+        "sio2_pct": 13.5,
+        "al2o3_pct": 3.45,
+        "fe2o3_pct": 2.1
+      }
+    },
+    "CYC_01": {
+      "block_id": "CYC_01",
+      "name": "Preheater Cyclone C1 (Top)",
+      "type": "CycloneStage",
+      "state": {
+        "gas_temp_c": 296.2,
+        "meal_temp_c": 519.9,
+        "pressure_drop_mbar": 5,
+        "heat_transferred_gjh": 109.36,
+        "heat_loss_gjh": 3.19,
+        "dust_carryover_tph": 4.2
+      },
+      "parameters": {
+        "stage_number": 1,
+        "separation_efficiency": 0.985,
+        "thermal_effectiveness": 0.85,
+        "dp_mbar": 5,
+        "heat_loss_pct": 1.5
+      }
+    },
+    "CYC_02": {
+      "block_id": "CYC_02",
+      "name": "Preheater Cyclone C2",
+      "type": "CycloneStage",
+      "state": {
+        "gas_temp_c": 601.1,
+        "meal_temp_c": 697.5,
+        "pressure_drop_mbar": 5.5,
+        "heat_transferred_gjh": 46.33,
+        "heat_loss_gjh": 3.96,
+        "dust_carryover_tph": 4.14
+      },
+      "parameters": {
+        "stage_number": 2,
+        "separation_efficiency": 0.985,
+        "thermal_effectiveness": 0.82,
+        "dp_mbar": 5.5,
+        "heat_loss_pct": 1.5
+      }
+    },
+    "CYC_03": {
+      "block_id": "CYC_03",
+      "name": "Preheater Cyclone C3",
+      "type": "CycloneStage",
+      "state": {
+        "gas_temp_c": 736.5,
+        "meal_temp_c": 793.7,
+        "pressure_drop_mbar": 5.5,
+        "heat_transferred_gjh": 25.68,
+        "heat_loss_gjh": 4.41,
+        "dust_carryover_tph": 4.07
+      },
+      "parameters": {
+        "stage_number": 3,
+        "separation_efficiency": 0.985,
+        "thermal_effectiveness": 0.8,
+        "dp_mbar": 5.5,
+        "heat_loss_pct": 1.5
+      }
+    },
+    "CYC_04": {
+      "block_id": "CYC_04",
+      "name": "Preheater Cyclone C4",
+      "type": "CycloneStage",
+      "state": {
+        "gas_temp_c": 817.7,
+        "meal_temp_c": 860.1,
+        "pressure_drop_mbar": 5.8,
+        "heat_transferred_gjh": 17.83,
+        "heat_loss_gjh": 4.73,
+        "dust_carryover_tph": 4.01
+      },
+      "parameters": {
+        "stage_number": 4,
+        "separation_efficiency": 0.985,
+        "thermal_effectiveness": 0.78,
+        "dp_mbar": 5.8,
+        "heat_loss_pct": 1.5
+      }
+    },
+    "CALC_01": {
+      "block_id": "CALC_01",
+      "name": "Inline Precalciner Reactor",
+      "type": "CalcinerReactor",
+      "state": {
+        "calciner_temp_c": 868.9,
+        "calcination_degree_pct": 91.2,
+        "co2_released_tph": 81.23,
+        "heat_input_mw": 90.75,
+        "heat_loss_gjh": 23.68,
+        "apparent_calcination_heat_gjh": 329.22
+      },
+      "parameters": {
+        "volume_m3": 1100,
+        "design_calcination_pct": 92.5,
+        "combustion_efficiency": 99,
+        "heat_loss_pct": 3.5,
+        "target_temp_c": 865
+      }
+    },
+    "FUEL_PC": {
+      "block_id": "FUEL_PC",
+      "name": "Precalciner Fuel Dosing",
+      "type": "FuelFeeder",
+      "state": {
+        "actual_rate_tph": 12,
+        "heat_input_mw": 91.67,
+        "heat_input_gjh": 330,
+        "heat_loss_gjh": 0
+      },
+      "parameters": {
+        "fuel_name": "Petcoke & CDR",
+        "nominal_rate_tph": 12,
+        "lhv_mj_kg": 27.5,
+        "ash_pct": 0.8,
+        "moisture_pct": 1
+      }
+    },
+    "CYC_05": {
+      "block_id": "CYC_05",
+      "name": "Preheater Cyclone C5 (Bottom)",
+      "type": "CycloneStage",
+      "state": {
+        "gas_temp_c": 878.9,
+        "meal_temp_c": 858.9,
+        "pressure_drop_mbar": 5,
+        "heat_transferred_gjh": 0,
+        "heat_loss_gjh": 4.62,
+        "dust_carryover_tph": 2.74
+      },
+      "parameters": {
+        "stage_number": 5,
+        "separation_efficiency": 0.985,
+        "thermal_effectiveness": 0.82,
+        "dp_mbar": 5,
+        "heat_loss_pct": 1.5
+      }
+    },
+    "KILN_01": {
+      "block_id": "KILN_01",
+      "name": "Rotary Kiln 3 (72m x 4.6m)",
+      "type": "RotaryKiln",
+      "state": {
+        "burning_zone_temp_c": 1407.2,
+        "kiln_inlet_gas_temp_c": 1041.4,
+        "kiln_drive_torque_kwn": 182,
+        "bed_residence_time_min": 20.6,
+        "free_lime_pct": 1.96,
+        "c3s_pct": 58.2,
+        "clinker_rate_tph": 172.04,
+        "heat_loss_gjh": 53.28
+      },
+      "parameters": {
+        "length_m": 72,
+        "diameter_m": 4.6,
+        "slope_pct": 3.5,
+        "speed_rpm": 3.79,
+        "target_burning_zone_c": 1435,
+        "shell_heat_loss_mw": 14.8
+      }
+    },
+    "FUEL_KILN": {
+      "block_id": "FUEL_KILN",
+      "name": "Kiln Main Burner Fuel",
+      "type": "FuelFeeder",
+      "state": {
+        "actual_rate_tph": 7.2,
+        "heat_input_mw": 62.8,
+        "heat_input_gjh": 226.08,
+        "heat_loss_gjh": 0
+      },
+      "parameters": {
+        "fuel_name": "Petcoke Main",
+        "nominal_rate_tph": 7.2,
+        "lhv_mj_kg": 31.4,
+        "ash_pct": 0.8,
+        "moisture_pct": 1
+      }
+    },
+    "COOLER_01": {
+      "block_id": "COOLER_01",
+      "name": "Hydraulic Grate Cooler",
+      "type": "GrateCooler",
+      "state": {
+        "secondary_air_temp_c": 925.8,
+        "tertiary_air_temp_c": 799.7,
+        "cooler_vent_temp_c": 231.6,
+        "clinker_exit_temp_c": 95,
+        "recuperated_heat_gjh": 179.66,
+        "cooler_hydraulic_press_bar": 92,
+        "heat_loss_gjh": 9.71
+      },
+      "parameters": {
+        "grate_area_m2": 105,
+        "cooling_air_total_tph": 348.5,
+        "secondary_air_split_pct": 24.2,
+        "tertiary_air_split_pct": 36.8,
+        "recuperation_efficiency": 0.74,
+        "clinker_target_temp_c": 95
+      }
+    },
+    "ID_FAN_01": {
+      "block_id": "ID_FAN_01",
+      "name": "Main ID Process Fan",
+      "type": "IDFan",
+      "state": {
+        "actual_flow_nm3h": 253537.4,
+        "fan_dp_mbar": 45.48,
+        "motor_power_kw": 855.8,
+        "motor_current_a": 813.8,
+        "inlet_draft_mbar": -54.8,
+        "outlet_draft_mbar": -9.3,
+        "heat_loss_gjh": 0
+      },
+      "parameters": {
+        "design_flow_nm3h": 350000,
+        "design_dp_mbar": 65,
+        "damper_pct": 82,
+        "motor_rated_kw": 2500,
+        "fan_efficiency": 0.78
+      }
+    },
+    "SILO_CLINKER": {
+      "block_id": "SILO_CLINKER",
+      "name": "Clinker Storage Dome",
+      "type": "SiloStorage",
+      "state": {
+        "level_pct": 45,
+        "stored_tons": 22500,
+        "heat_loss_gjh": 0
+      },
+      "parameters": {
+        "capacity_tons": 50000,
+        "initial_level_pct": 45
+      }
+    }
+  },
+  "stream_table": [
+    {
+      "stream_id": 1,
+      "name": "Raw Meal Total Feed",
+      "from_node": "FEED_01",
+      "from_port": "out_solid",
+      "to_node": "CYC_01",
+      "to_port": "in_meal",
+      "phase": "SOLID",
+      "mass_flow_tph": 280,
+      "volume_flow_nm3h": null,
+      "temperature_c": 60,
+      "pressure_mbar": 0,
+      "enthalpy_gjh": 79.229,
+      "composition": {
+        "CaCO3_pct": 76.85,
+        "MgCO3_pct": 2.15,
+        "SiO2_pct": 13.5,
+        "Al2O3_pct": 3.45,
+        "Fe2O3_pct": 2.1,
+        "Moisture_pct": 0.8,
+        "LOI_pct": 34.91
+      }
+    },
+    {
+      "stream_id": 2,
+      "name": "Stage 1 Meal to Stage 2",
+      "from_node": "CYC_01",
+      "from_port": "out_meal",
+      "to_node": "CYC_02",
+      "to_port": "in_meal",
+      "phase": "SOLID",
+      "mass_flow_tph": 275.8,
+      "volume_flow_nm3h": null,
+      "temperature_c": 519.85,
+      "pressure_mbar": -49.8,
+      "enthalpy_gjh": 206.808,
+      "composition": {
+        "CaCO3_pct": 76.85,
+        "MgCO3_pct": 2.15,
+        "SiO2_pct": 13.5,
+        "Al2O3_pct": 3.45,
+        "Fe2O3_pct": 2.1,
+        "Moisture_pct": 0.8,
+        "LOI_pct": 34.91
+      }
+    },
+    {
+      "stream_id": 3,
+      "name": "Stage 2 Meal to Stage 3",
+      "from_node": "CYC_02",
+      "from_port": "out_meal",
+      "to_node": "CYC_03",
+      "to_port": "in_meal",
+      "phase": "SOLID",
+      "mass_flow_tph": 271.663,
+      "volume_flow_nm3h": null,
+      "temperature_c": 697.51,
+      "pressure_mbar": -44.3,
+      "enthalpy_gjh": 259.161,
+      "composition": {
+        "CaCO3_pct": 76.85,
+        "MgCO3_pct": 2.15,
+        "SiO2_pct": 13.5,
+        "Al2O3_pct": 3.45,
+        "Fe2O3_pct": 2.1,
+        "Moisture_pct": 0.8,
+        "LOI_pct": 34.91
+      }
+    },
+    {
+      "stream_id": 4,
+      "name": "Stage 3 Meal to Stage 4",
+      "from_node": "CYC_03",
+      "from_port": "out_meal",
+      "to_node": "CYC_04",
+      "to_port": "in_meal",
+      "phase": "SOLID",
+      "mass_flow_tph": 267.588,
+      "volume_flow_nm3h": null,
+      "temperature_c": 793.68,
+      "pressure_mbar": -38.8,
+      "enthalpy_gjh": 286.299,
+      "composition": {
+        "CaCO3_pct": 76.85,
+        "MgCO3_pct": 2.15,
+        "SiO2_pct": 13.5,
+        "Al2O3_pct": 3.45,
+        "Fe2O3_pct": 2.1,
+        "Moisture_pct": 0.8,
+        "LOI_pct": 34.91
+      }
+    },
+    {
+      "stream_id": 5,
+      "name": "Stage 4 Meal to Calciner",
+      "from_node": "CYC_04",
+      "from_port": "out_meal",
+      "to_node": "CALC_01",
+      "to_port": "in_meal",
+      "phase": "SOLID",
+      "mass_flow_tph": 263.574,
+      "volume_flow_nm3h": null,
+      "temperature_c": 860.12,
+      "pressure_mbar": -33,
+      "enthalpy_gjh": 303.693,
+      "composition": {
+        "CaCO3_pct": 76.85,
+        "MgCO3_pct": 2.15,
+        "SiO2_pct": 13.5,
+        "Al2O3_pct": 3.45,
+        "Fe2O3_pct": 2.1,
+        "Moisture_pct": 0.8,
+        "LOI_pct": 34.91
+      }
+    },
+    {
+      "stream_id": 6,
+      "name": "Precalciner Fuel Supply",
+      "from_node": "FUEL_PC",
+      "from_port": "out_fuel",
+      "to_node": "CALC_01",
+      "to_port": "in_fuel",
+      "phase": "FUEL",
+      "mass_flow_tph": 12,
+      "volume_flow_nm3h": null,
+      "temperature_c": 25,
+      "pressure_mbar": 0,
+      "enthalpy_gjh": 334.191,
+      "composition": {
+        "fuel_name": "Petcoke & CDR",
+        "lhv_mj_kg": 27.5,
+        "ash_pct": 0.8,
+        "moisture_pct": 1
+      }
+    },
+    {
+      "stream_id": 7,
+      "name": "Tertiary Air Duct",
+      "from_node": "COOLER_01",
+      "from_port": "out_tertiary_air",
+      "to_node": "CALC_01",
+      "to_port": "in_tertiary_air",
+      "phase": "AIR",
+      "mass_flow_tph": 128.248,
+      "volume_flow_nm3h": 99186.4,
+      "temperature_c": 799.69,
+      "pressure_mbar": -5,
+      "enthalpy_gjh": 155.432,
+      "composition": {
+        "O2_pct": 20.9,
+        "N2_pct": 79.1
+      }
+    },
+    {
+      "stream_id": 8,
+      "name": "Kiln Inlet Exhaust Gas",
+      "from_node": "KILN_01",
+      "from_port": "out_kiln_gas",
+      "to_node": "CALC_01",
+      "to_port": "in_gas",
+      "phase": "GAS",
+      "mass_flow_tph": 99.191,
+      "volume_flow_nm3h": 74023.2,
+      "temperature_c": 1041.4,
+      "pressure_mbar": -1.8,
+      "enthalpy_gjh": 151.884,
+      "composition": {
+        "O2_pct": 2.2,
+        "CO2_pct": 22.5,
+        "N2_pct": 71,
+        "H2O_pct": 4.3
+      }
+    },
+    {
+      "stream_id": 9,
+      "name": "Calciner Flue Gas to Stage 5",
+      "from_node": "CALC_01",
+      "from_port": "out_gas",
+      "to_node": "CYC_05",
+      "to_port": "in_gas",
+      "phase": "GAS",
+      "mass_flow_tph": 320.578,
+      "volume_flow_nm3h": 239237.2,
+      "temperature_c": 868.86,
+      "pressure_mbar": -28,
+      "enthalpy_gjh": 417.257,
+      "composition": {
+        "CO2_pct": 38.1,
+        "O2_pct": 2.8,
+        "N2_pct": 62,
+        "H2O_pct": 7.2
+      }
+    },
+    {
+      "stream_id": 10,
+      "name": "Calciner Decarbonated Meal to Stage 5",
+      "from_node": "CALC_01",
+      "from_port": "out_meal",
+      "to_node": "CYC_05",
+      "to_port": "in_meal",
+      "phase": "SOLID",
+      "mass_flow_tph": 182.436,
+      "volume_flow_nm3h": null,
+      "temperature_c": 868.86,
+      "pressure_mbar": -28,
+      "enthalpy_gjh": 212.174,
+      "composition": {
+        "CaO_pct": 56.74,
+        "CaCO3_pct": 9.76,
+        "SiO2_pct": 19.5,
+        "Al2O3_pct": 4.98,
+        "Fe2O3_pct": 3.03,
+        "MgO_pct": 1.48,
+        "LOI_pct": 4.29
+      }
+    },
+    {
+      "stream_id": 11,
+      "name": "Stage 5 Flue Gas to Stage 4",
+      "from_node": "CYC_05",
+      "from_port": "out_gas",
+      "to_node": "CYC_04",
+      "to_port": "in_gas",
+      "phase": "GAS",
+      "mass_flow_tph": 323.314,
+      "volume_flow_nm3h": 241279.3,
+      "temperature_c": 878.86,
+      "pressure_mbar": -33,
+      "enthalpy_gjh": 425.127,
+      "composition": {
+        "CO2_pct": 38.1,
+        "O2_pct": 2.8,
+        "N2_pct": 62,
+        "H2O_pct": 7.2
+      }
+    },
+    {
+      "stream_id": 12,
+      "name": "Stage 4 Flue Gas to Stage 3",
+      "from_node": "CYC_04",
+      "from_port": "out_gas",
+      "to_node": "CYC_03",
+      "to_port": "in_gas",
+      "phase": "GAS",
+      "mass_flow_tph": 327.328,
+      "volume_flow_nm3h": 244274.7,
+      "temperature_c": 817.73,
+      "pressure_mbar": -38.8,
+      "enthalpy_gjh": 404.28,
+      "composition": {
+        "CO2_pct": 38.1,
+        "O2_pct": 2.8,
+        "N2_pct": 62,
+        "H2O_pct": 7.2
+      }
+    },
+    {
+      "stream_id": 13,
+      "name": "Stage 3 Flue Gas to Stage 2",
+      "from_node": "CYC_03",
+      "from_port": "out_gas",
+      "to_node": "CYC_02",
+      "to_port": "in_gas",
+      "phase": "GAS",
+      "mass_flow_tph": 331.403,
+      "volume_flow_nm3h": 247315.7,
+      "temperature_c": 736.54,
+      "pressure_mbar": -44.3,
+      "enthalpy_gjh": 374.928,
+      "composition": {
+        "CO2_pct": 38.1,
+        "O2_pct": 2.8,
+        "N2_pct": 62,
+        "H2O_pct": 7.2
+      }
+    },
+    {
+      "stream_id": 14,
+      "name": "Stage 2 Flue Gas to Stage 1",
+      "from_node": "CYC_02",
+      "from_port": "out_gas",
+      "to_node": "CYC_01",
+      "to_port": "in_gas",
+      "phase": "GAS",
+      "mass_flow_tph": 335.54,
+      "volume_flow_nm3h": 250403.1,
+      "temperature_c": 601.06,
+      "pressure_mbar": -49.8,
+      "enthalpy_gjh": 322.78,
+      "composition": {
+        "CO2_pct": 38.1,
+        "O2_pct": 2.8,
+        "N2_pct": 62,
+        "H2O_pct": 7.2
+      }
+    },
+    {
+      "stream_id": 15,
+      "name": "Preheater Top Gas to ID Fan",
+      "from_node": "CYC_01",
+      "from_port": "out_gas",
+      "to_node": "ID_FAN_01",
+      "to_port": "in_gas",
+      "phase": "GAS",
+      "mass_flow_tph": 339.74,
+      "volume_flow_nm3h": 253537.4,
+      "temperature_c": 296.17,
+      "pressure_mbar": -54.8,
+      "enthalpy_gjh": 204.261,
+      "composition": {
+        "CO2_pct": 38.1,
+        "O2_pct": 2.8,
+        "N2_pct": 62,
+        "H2O_pct": 7.2
+      }
+    },
+    {
+      "stream_id": 16,
+      "name": "Decarbonated Meal to Kiln",
+      "from_node": "CYC_05",
+      "from_port": "out_meal",
+      "to_node": "KILN_01",
+      "to_port": "in_meal_calcined",
+      "phase": "SOLID",
+      "mass_flow_tph": 179.699,
+      "volume_flow_nm3h": null,
+      "temperature_c": 858.86,
+      "pressure_mbar": -28,
+      "enthalpy_gjh": 206.736,
+      "composition": {
+        "CaO_pct": 56.74,
+        "CaCO3_pct": 9.76,
+        "SiO2_pct": 19.5,
+        "Al2O3_pct": 4.98,
+        "Fe2O3_pct": 3.03,
+        "MgO_pct": 1.48,
+        "LOI_pct": 4.29
+      }
+    },
+    {
+      "stream_id": 17,
+      "name": "Kiln Main Burner Flame Fuel",
+      "from_node": "FUEL_KILN",
+      "from_port": "out_fuel",
+      "to_node": "KILN_01",
+      "to_port": "in_flame_fuel",
+      "phase": "FUEL",
+      "mass_flow_tph": 7.2,
+      "volume_flow_nm3h": null,
+      "temperature_c": 25,
+      "pressure_mbar": 0,
+      "enthalpy_gjh": 228.595,
+      "composition": {
+        "fuel_name": "Petcoke Main",
+        "lhv_mj_kg": 31.4,
+        "ash_pct": 0.8,
+        "moisture_pct": 1
+      }
+    },
+    {
+      "stream_id": 18,
+      "name": "Hot Secondary Air to Kiln",
+      "from_node": "COOLER_01",
+      "from_port": "out_secondary_air",
+      "to_node": "KILN_01",
+      "to_port": "in_secondary_air",
+      "phase": "AIR",
+      "mass_flow_tph": 84.337,
+      "volume_flow_nm3h": 65225.8,
+      "temperature_c": 925.8,
+      "pressure_mbar": -0.5,
+      "enthalpy_gjh": 116.09,
+      "composition": {
+        "O2_pct": 20.9,
+        "N2_pct": 79.1
+      }
+    },
+    {
+      "stream_id": 19,
+      "name": "Hot Clinker to Grate Cooler",
+      "from_node": "KILN_01",
+      "from_port": "out_clinker",
+      "to_node": "COOLER_01",
+      "to_port": "in_clinker_hot",
+      "phase": "SOLID",
+      "mass_flow_tph": 172.045,
+      "volume_flow_nm3h": null,
+      "temperature_c": 1392.23,
+      "pressure_mbar": 0,
+      "enthalpy_gjh": 323.196,
+      "composition": {
+        "C3S_pct": 58.2,
+        "C2S_pct": 17.8,
+        "C3A_pct": 7.8,
+        "C4AF_pct": 10.2,
+        "Free_CaO_pct": 1.96,
+        "MgO_pct": 1.4
+      }
+    },
+    {
+      "stream_id": 20,
+      "name": "Cooled Clinker to Dome Silo",
+      "from_node": "COOLER_01",
+      "from_port": "out_clinker_cool",
+      "to_node": "SILO_CLINKER",
+      "to_port": "in_solid",
+      "phase": "SOLID",
+      "mass_flow_tph": 172.045,
+      "volume_flow_nm3h": null,
+      "temperature_c": 95,
+      "pressure_mbar": 0,
+      "enthalpy_gjh": 54.274,
+      "composition": {
+        "C3S_pct": 58.2,
+        "C2S_pct": 17.8,
+        "C3A_pct": 7.8,
+        "C4AF_pct": 10.2,
+        "Free_CaO_pct": 1.96,
+        "MgO_pct": 1.4
+      }
+    }
+  ],
+  "audit": {
+    "mass_in_tph": 647.7,
+    "mass_out_tph": 647.7,
+    "mass_err_tph": 0,
+    "mass_closure_pct": 100,
+    "heat_in_gjh": 650.73,
+    "heat_out_gjh": 289.08,
+    "heat_loss_gjh": 107.58
+  }
+}
