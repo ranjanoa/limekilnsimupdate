@@ -193,6 +193,59 @@
     updateSimStatus('READY');
     renderGlobalInspector();
     setTimeout(fitGraphToView, 150);
+    setInterval(syncLiveTelemetryFromServer, 1500);
+  }
+
+  async function syncLiveTelemetryFromServer() {
+    if (state.isSimulating || state.isDragging) return;
+    if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) return;
+    try {
+      const res = await fetch('/api/flowsheet/builder/active', { cache: 'no-store' });
+      if (!res.ok) return;
+      const actData = await res.json();
+      if (!actData || !actData.flowsheet || !actData.flowsheet.components) return;
+
+      let changed = false;
+      actData.flowsheet.components.forEach(serverComp => {
+        const localComp = state.graph.components.find(c => c.id === serverComp.id);
+        if (localComp) {
+          if (serverComp.parameters) {
+            for (const [k, v] of Object.entries(serverComp.parameters)) {
+              if (localComp.parameters[k] !== v) {
+                localComp.parameters[k] = v;
+                changed = true;
+              }
+            }
+          }
+          if (serverComp.state) {
+            for (const [k, v] of Object.entries(serverComp.state)) {
+              if (localComp.state[k] !== v) {
+                localComp.state[k] = v;
+                changed = true;
+              }
+            }
+          }
+        }
+      });
+
+      if (actData.flowsheet.connections) {
+        actData.flowsheet.connections.forEach(serverConn => {
+          const localConn = state.graph.connections.find(c => c.stream_id === serverConn.stream_id);
+          if (localConn && localConn.mass_flow_tph !== serverConn.mass_flow_tph) {
+            localConn.mass_flow_tph = serverConn.mass_flow_tph;
+            changed = true;
+          }
+        });
+      }
+
+      if (changed) {
+        renderGraph();
+        if (state.selectedBlockId) renderBlockInspector(state.selectedBlockId);
+        if (state.selectedStreamId) renderStreamInspector(state.selectedStreamId);
+      }
+    } catch (e) {
+      // Ignore background sync errors
+    }
   }
 
   function showToast(message, type = 'info') {
@@ -236,6 +289,7 @@
       'Cooling': '❄️',
       'Draft / Fans': '💨',
       'Flow Control': '🔀',
+      'Instrumentation': '🔬',
       'General': '⚙️',
     };
 
@@ -606,6 +660,7 @@
       RotaryKiln: '🏭',
       GrateCooler: '❄️',
       IDFan: '💨',
+      StreamSensor: '🧪',
       StreamMixer: '🔀',
       FuelMixer: '🔀🔥',
       AirMixer: '🔀💨',
@@ -731,6 +786,7 @@
       'RotaryKiln': 'KILN',
       'GrateCooler': 'COOLER',
       'IDFan': 'ID_FAN',
+      'StreamSensor': 'SENSOR',
       'SiloStorage': 'SILO'
     };
     const basePrefix = TYPE_PREFIXES[blockType] || blockType.toUpperCase().replace(/[^A-Z0-9]/g, '_');
@@ -2359,6 +2415,8 @@
           }
 
           renderGraph();
+          if (state.selectedBlockId) renderBlockInspector(state.selectedBlockId);
+          if (state.selectedStreamId) renderStreamInspector(state.selectedStreamId);
           saveAutoFlowsheet();
 
           const iter = (data.solve_result && data.solve_result.iterations) || 1;
@@ -2458,8 +2516,9 @@
         if (stepData.telemetry) {
           Object.entries(stepData.telemetry).forEach(([bId, telem]) => {
             const block = state.graph.components.find(b => b.id === bId);
-            if (block && telem.state) {
-              block.state = telem.state;
+            if (block) {
+              if (telem.state) block.state = telem.state;
+              if (telem.parameters) block.parameters = { ...block.parameters, ...telem.parameters };
             }
           });
         }

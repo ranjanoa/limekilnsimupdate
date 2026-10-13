@@ -18,7 +18,7 @@ function initApp() {
       if (res.ok) {
         const data = await res.json();
         const isActive = !!data.opc_active;
-        const endpoint = data.server_endpoint || 'opc.tcp://0.0.0.0:4841';
+        const endpoint = data.client_endpoint || data.server_endpoint || 'opc.tcp://127.0.0.1:4841/freeopcua/server/';
         const tagCount = data.opc_tags ?? 0;
 
         if (opcStatusPill && opcStatusText) {

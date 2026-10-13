@@ -50,6 +50,9 @@ class RotaryKiln(BlockBase):
             "free_lime_pct": 1.15,
             "c3s_pct": 62.4,
             "clinker_rate_tph": 175.0,
+            "kiln_inlet_o2_pct": 2.32,
+            "kiln_inlet_co_pct": 0.04,
+            "kiln_inlet_nox_ppm": 850.0,
             "heat_loss_gjh": round(float(self.parameters.get("shell_heat_loss_mw", 14.8)) * 3.6, 2),
         }
 
@@ -117,6 +120,14 @@ class RotaryKiln(BlockBase):
         f_cao = round(max(0.1, min(6.0, f_cao)), 2)
         c3s = round(max(30.0, min(75.0, 60.1 + 0.04 * (t_bz_target - 1435.0) - 1.2 * (f_cao - 1.30))), 1)
 
+        # Combustion stoichiometry & Gas Analysis (O2, CO, NOx)
+        m_air_in = m_sec_air + m_pri_air
+        m_air_stoich = m_fuel * 10.5
+        lambda_kiln = m_air_in / max(0.1, m_air_stoich) if m_fuel > 0.1 else 1.19
+        o2_target = max(0.5, min(8.0, 2.32 + (lambda_kiln - 1.19) * 8.5))
+        co_target = max(0.01, min(3.50, 0.04 + max(0.0, 1.8 - o2_target) * 0.45))
+        nox_target = round(850.0 * math.exp(0.0035 * (t_bz_target - 1435.0)), 0)
+
         # Flue gas exit temperature at kiln inlet (~1050°C), coupled to burning zone
         t_kiln_gas = round(1050.8 + 0.35 * (t_bz_target - 1435.0) - 0.20 * (m_meal - m_meal_ref), 1)
         t_kiln_gas = max(850.0, min(1200.0, t_kiln_gas))
@@ -130,6 +141,9 @@ class RotaryKiln(BlockBase):
         self.state["clinker_rate_tph"] = round(m_clinker, 2)
         self.state["free_lime_pct"] = round(f_cao, 2)
         self.state["c3s_pct"] = round(c3s, 1)
+        self.state["kiln_inlet_o2_pct"] = round(o2_target, 2)
+        self.state["kiln_inlet_co_pct"] = round(co_target, 3)
+        self.state["kiln_inlet_nox_ppm"] = round(nox_target, 0)
         self.state["heat_loss_gjh"] = round(shell_loss_gjh, 2)
 
         # Update outlet streams
@@ -169,9 +183,11 @@ class RotaryKiln(BlockBase):
                 temperature_c=t_kiln_gas,
                 pressure_mbar=-1.8,
                 composition={
-                    "O2_pct": 2.2,
+                    "O2_pct": round(o2_target, 2),
+                    "CO_pct": round(co_target, 3),
                     "CO2_pct": 22.5,
-                    "N2_pct": 71.0,
+                    "N2_pct": round(77.5 - o2_target - co_target, 1),
+                    "NOx_ppm": round(nox_target, 0),
                     "H2O_pct": 4.3,
                 },
             )

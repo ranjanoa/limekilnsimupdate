@@ -46,6 +46,8 @@ class CalcinerReactor(BlockBase):
         self.state = {
             "calciner_temp_c": target_t,
             "calcination_degree_pct": target_calc,
+            "calciner_o2_pct": 2.80,
+            "calciner_co_pct": 0.05,
             "co2_released_tph": 88.5,
             "heat_input_mw": 85.0,
             "heat_loss_gjh": 14.5,
@@ -117,9 +119,19 @@ class CalcinerReactor(BlockBase):
 
         q_loss_gjh = loss_pct * (q_fuel_gjh + 350.0)
 
+        # 5. Excess air & Gas Analysis (O2, CO)
+        in_gas_o2 = in_gas.composition.get("O2_pct", 2.32) if in_gas and in_gas.composition else 2.32
+        m_o2_in = (m_ta * 0.232) + (m_gas * (in_gas_o2 / 100.0) * (32.0 / 28.9))
+        m_o2_stoich = m_fuel * 2.45
+        excess_o2 = m_o2_in - m_o2_stoich
+        calc_o2 = max(0.8, min(7.5, (excess_o2 / max(1.0, m_gas_out)) * 100.0 * (28.9 / 32.0))) if m_gas_out > 0 else 2.80
+        calc_co = max(0.02, min(3.50, 0.05 + max(0.0, 2.2 - calc_o2) * 0.35))
+
         # Update block state
         self.state["calciner_temp_c"] = round(t_calc_target, 1)
         self.state["calcination_degree_pct"] = round(calc_pct, 1)
+        self.state["calciner_o2_pct"] = round(calc_o2, 2)
+        self.state["calciner_co_pct"] = round(calc_co, 3)
         self.state["co2_released_tph"] = round(m_co2_released, 2)
         self.state["heat_input_mw"] = round(q_fuel_mw, 2)
         self.state["apparent_calcination_heat_gjh"] = round(q_calc_gjh, 2)
@@ -134,8 +146,9 @@ class CalcinerReactor(BlockBase):
                 pressure_mbar=-28.0,
                 composition={
                     "CO2_pct": round(28.0 + (m_co2_released / max(1.0, m_gas_out)) * 40.0, 1),
-                    "O2_pct": 2.8,
-                    "N2_pct": 62.0,
+                    "O2_pct": round(calc_o2, 2),
+                    "CO_pct": round(calc_co, 3),
+                    "N2_pct": round(68.0 - calc_o2, 1),
                     "H2O_pct": 7.2,
                 },
             )

@@ -75,12 +75,12 @@
     try {
       const res = await fetch('/api/opc/status', { cache: 'no-store' });
       if (res.ok) {
-        const data = await res.json();
+        const endpoint = data.client_endpoint || 'opc.tcp://127.0.0.1:4841/freeopcua/server/';
         if (opcServerEndpointText) {
-          opcServerEndpointText.textContent = `OPC UA Server: ${data.server_endpoint || 'opc.tcp://0.0.0.0:4841'}`;
+          opcServerEndpointText.textContent = `OPC UA Server: ${endpoint}`;
         }
         if (footerMeta) {
-          footerMeta.innerHTML = `Endpoint: <code style="color: #38BDF8;">${data.server_endpoint || 'opc.tcp://0.0.0.0:4841'}</code> | Mode: <strong>${(data.opc_mode || 'SERVER').toUpperCase()}</strong> | Active Tags: <strong>${data.total_tags || 0}</strong>`;
+          footerMeta.innerHTML = `Client Target: <code style="color: #38BDF8;">${endpoint}</code> | Mode: <strong>${(data.opc_mode || 'SERVER').toUpperCase()}</strong> | Active Tags: <strong>${data.total_tags || 0}</strong>`;
         }
       }
     } catch (e) {

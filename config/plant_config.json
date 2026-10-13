@@ -8,7 +8,7 @@
     "time_step_seconds": 0.1,
     "time_scale_multiplier": 1.0,
     "real_time_mode": true,
-    "operating_mode": "standalone"
+    "operating_mode": "opc_ua"
   },
   "raw_material": {
     "moisture_pct": 0.5,

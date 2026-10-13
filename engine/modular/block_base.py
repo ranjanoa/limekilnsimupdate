@@ -203,8 +203,8 @@ class BlockBase(ABC):
             "block_id": self.block_id,
             "name": self.name,
             "type": self.block_type,
-            "state": self.state,
-            "parameters": self.parameters,
+            "state": self.state.copy(),
+            "parameters": self.parameters.copy(),
         }
 
     def get_opc_tags(self) -> List[Dict[str, Any]]:
@@ -212,7 +212,8 @@ class BlockBase(ABC):
         Auto-generates tag metadata for OPC UA node registration and Tag Studio.
         """
         tags = []
-        for state_key, val in self.state.items():
+        state_snapshot = list(self.state.copy().items())
+        for state_key, val in state_snapshot:
             if isinstance(val, (int, float, bool)):
                 num_val = round(val, 2) if isinstance(val, float) else val
                 tags.append({
@@ -231,7 +232,8 @@ class BlockBase(ABC):
                     "hmi_tag": f"{self.block_id}.{state_key}",
                     "status": "RUNNING",
                 })
-        for param_key, val in self.parameters.items():
+        param_snapshot = list(self.parameters.copy().items())
+        for param_key, val in param_snapshot:
             if isinstance(val, (int, float)):
                 num_val = round(val, 2) if isinstance(val, float) else val
                 tags.append({

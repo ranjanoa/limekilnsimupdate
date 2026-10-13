@@ -63,6 +63,18 @@ def sync_modular_telemetry_to_engine(modular_mgr, eng):
             torque = kiln_b.state.get("kiln_drive_torque_kwn")
             if torque is not None:
                 eng.kiln_drive_torque = float(torque)
+            kln_o2 = kiln_b.state.get("kiln_inlet_o2_pct")
+            if kln_o2 is not None:
+                eng.kiln_inlet_o2 = float(kln_o2)
+            kln_co = kiln_b.state.get("kiln_inlet_co_pct")
+            if kln_co is not None:
+                eng.kiln_inlet_co = float(kln_co)
+            kln_nox = kiln_b.state.get("kiln_inlet_nox_ppm")
+            if kln_nox is not None:
+                eng.kiln_inlet_nox = float(kln_nox)
+            kln_t = kiln_b.state.get("kiln_inlet_gas_temp_c")
+            if kln_t is not None:
+                eng.kiln_inlet_temp = float(kln_t)
         # 3. Calciner
         calc_b = blocks.get("CALC_01")
         if calc_b:
@@ -72,6 +84,12 @@ def sync_modular_telemetry_to_engine(modular_mgr, eng):
             calc_deg = calc_b.state.get("calcination_degree_pct")
             if calc_deg is not None:
                 eng.pc_calcination = float(calc_deg)
+            calc_o2 = calc_b.state.get("calciner_o2_pct")
+            if calc_o2 is not None:
+                eng.ph_o2 = float(calc_o2)
+            calc_co = calc_b.state.get("calciner_co_pct")
+            if calc_co is not None:
+                eng.ph_co = float(calc_co)
         # 4. Cooler
         cooler_b = blocks.get("COOLER_01")
         if cooler_b:
@@ -93,6 +111,20 @@ def sync_modular_telemetry_to_engine(modular_mgr, eng):
             draft = fan_b.state.get("inlet_draft_mbar")
             if draft is not None:
                 eng.ph_top_draft = float(draft)
+        # 7. Dedicated Stream Sensors (if placed on gas streams)
+        for b_id, b_inst in blocks.items():
+            if b_inst.block_type == "StreamSensor":
+                o2_m = b_inst.state.get("o2_pct")
+                co_m = b_inst.state.get("co_pct")
+                nox_m = b_inst.state.get("nox_ppm")
+                bid_lower = b_id.lower()
+                if "kiln" in bid_lower or "inlet" in bid_lower:
+                    if o2_m is not None: eng.kiln_inlet_o2 = float(o2_m)
+                    if co_m is not None: eng.kiln_inlet_co = float(co_m)
+                    if nox_m is not None: eng.kiln_inlet_nox = float(nox_m)
+                elif "calc" in bid_lower or "ph" in bid_lower:
+                    if o2_m is not None: eng.ph_o2 = float(o2_m)
+                    if co_m is not None: eng.ph_co = float(co_m)
     except Exception as e:
         logger.debug(f"Telemetry sync error: {e}")
 
@@ -267,6 +299,12 @@ class SimulatorRestHttpHandler(SimpleHTTPRequestHandler):
             fname = parsed.path.split("/")[-1]
             try:
                 loaded = modular_manager.load_from_file(fname)
+                if active_opc_server and active_event_loop:
+                    for t in modular_manager.get_opc_tags():
+                        try:
+                            asyncio.run_coroutine_threadsafe(active_opc_server.register_node(t), active_event_loop)
+                        except Exception as tag_err:
+                            logger.debug(f"OPC tag dynamic registration error: {tag_err}")
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
                 self._send_cors_headers()
@@ -418,6 +456,11 @@ class SimulatorRestHttpHandler(SimpleHTTPRequestHandler):
                     modular_manager.update_block_parameter("FEED_01", "nominal_rate_tph", val)
                 elif tag_id == "Opt_PCTemp_SP":
                     modular_manager.update_block_parameter("CALC_01", "target_calciner_temp_c", val)
+                if active_opc_server and active_event_loop:
+                    try:
+                        asyncio.run_coroutine_threadsafe(active_opc_server.update_command_node(tag_id, val), active_event_loop)
+                    except Exception as ex:
+                        logger.warning(f"Could not update OPC UA command node: {ex}")
                 self.send_response(200 if success else 404)
                 self.send_header("Content-Type", "application/json")
                 self._send_cors_headers()
@@ -491,19 +534,20 @@ class SimulatorRestHttpHandler(SimpleHTTPRequestHandler):
             try:
                 body = json.loads(post_body.decode("utf-8")) if post_body and post_body.strip() else {}
                 endpoint = body.get("endpoint") or (active_opc_server.endpoint if active_opc_server else "opc.tcp://127.0.0.1:4841/freeopcua/server/")
-                tags = engine.get_tags_list()
+                is_active = active_opc_server is not None and getattr(active_opc_server, "is_running", False)
+                tags = get_unified_tags_list(engine, modular_manager)
                 nodes_count = len(tags)
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
                 self._send_cors_headers()
                 self.end_headers()
                 self.wfile.write(json.dumps({
-                    "status": "success",
-                    "reachable": True,
+                    "status": "success" if is_active else "warning",
+                    "reachable": is_active,
                     "endpoint": endpoint,
                     "nodes_count": nodes_count,
-                    "latency_ms": 1.4,
-                    "message": "OPC UA server active, listening and all registered nodes ready"
+                    "latency_ms": 1.4 if is_active else 0.0,
+                    "message": "OPC UA server active, listening on port 4841 and all registered nodes ready" if is_active else "OPC UA Server is not currently running."
                 }).encode("utf-8"))
             except Exception as e:
                 self.send_response(400)
@@ -630,6 +674,12 @@ class SimulatorRestHttpHandler(SimpleHTTPRequestHandler):
                         engine.apply_operator_setpoint("Opt_PCFuel_Bias_pct", bias)
                     except Exception:
                         pass
+                if active_opc_server and active_event_loop:
+                    tag_name = f"{block_id}_SP_{param_name.upper()}"
+                    try:
+                        asyncio.run_coroutine_threadsafe(active_opc_server.update_command_node(tag_name, value), active_event_loop)
+                    except Exception:
+                        pass
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
                 self._send_cors_headers()
@@ -754,7 +804,7 @@ async def main():
         cfg = json.load(f)
 
     operating_mode = cfg.get("simulation", {}).get("operating_mode", "opc_ua")
-    mode = args.mode or ("standalone" if operating_mode == "standalone" else cfg.get("opc_ua", {}).get("mode", "server"))
+    mode = args.mode or (cfg.get("opc_ua", {}).get("mode", "server") if operating_mode != "client" else "client")
 
     logger.info("=" * 78)
     logger.info("  KILN 3 CEMENT PYROPROCESS DIGITAL TWIN & OPTIMIZER TESTBED")
@@ -767,21 +817,15 @@ async def main():
     http_thread.start()
 
     # 2. Run selected mode
-    if mode == "standalone":
-        logger.info("Running in STANDALONE SIMULATOR mode (Autonomous First-Principles Engine)...")
-        dt = cfg.get("simulation", {}).get("time_step_seconds", 0.1)
-        while True:
-            t0 = asyncio.get_event_loop().time()
-            engine.step(dt)
-            elapsed = asyncio.get_event_loop().time() - t0
-            await asyncio.sleep(max(0.001, dt - elapsed))
-    elif mode == "client":
+    if mode == "client":
         logger.info("Starting OPC UA Client Bridge to connect to external optimization server...")
         bridge = CementOpcUaClientBridge(engine=engine, config_path=CONFIG_PATH)
         await bridge.start()
     else:
-        logger.info("Starting OPC UA Server for external optimizers to connect as clients...")
-        opc_server = CementOpcUaServer(engine=engine, config_path=CONFIG_PATH)
+        logger.info("Starting Industrial OPC UA Server on port 4841...")
+        logger.info("  OPC UA Server Endpoint: opc.tcp://0.0.0.0:4841/freeopcua/server/")
+        logger.info("  Client Target URL:      opc.tcp://127.0.0.1:4841/freeopcua/server/")
+        opc_server = CementOpcUaServer(engine=engine, modular_manager=modular_manager, config_path=CONFIG_PATH)
         active_opc_server = opc_server
         await opc_server.start()
 

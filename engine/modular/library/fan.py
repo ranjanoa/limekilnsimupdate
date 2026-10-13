@@ -42,6 +42,10 @@ class IDFan(BlockBase):
             "motor_current_a": 195.0,
             "inlet_draft_mbar": -56.0,
             "outlet_draft_mbar": 2.5,
+            "stack_o2_pct": 3.18,
+            "stack_co_pct": 0.04,
+            "stack_co2_pct": 28.5,
+            "stack_nox_ppm": 450.0,
             "heat_loss_gjh": 0.0,
         }
 
@@ -67,12 +71,15 @@ class IDFan(BlockBase):
         p_out = p_in + dp_actual
 
         # Aerodynamic shaft power: P = V_m3_s * dp_Pa / eff
-        # dp_Pa = dp_mbar * 100.0
-        # V_actual_m3_s = (V_nm3h / 3600.0) * ((T + 273.15) / 273.15)
         v_act_m3_s = (v_nm3h / 3600.0) * ((t_gas + 273.15) / 273.15)
         dp_pa = dp_actual * 100.0
         power_kw = (v_act_m3_s * dp_pa) / (eff * 1000.0)
         power_kw = min(float(self.parameters.get("motor_rated_kw", 2500.0)), max(100.0, power_kw))
+
+        in_o2 = in_gas.composition.get("O2_pct", 3.18) if in_gas and in_gas.composition else 3.18
+        in_co = in_gas.composition.get("CO_pct", 0.04) if in_gas and in_gas.composition else 0.04
+        in_co2 = in_gas.composition.get("CO2_pct", 28.5) if in_gas and in_gas.composition else 28.5
+        in_nox = in_gas.composition.get("NOx_ppm", 450.0) if in_gas and in_gas.composition else 450.0
 
         # Update block state
         self.state["actual_flow_nm3h"] = round(v_nm3h, 1)
@@ -81,6 +88,10 @@ class IDFan(BlockBase):
         self.state["motor_current_a"] = round(power_kw / (0.690 * 1.732 * 0.88), 1)
         self.state["inlet_draft_mbar"] = round(p_in, 1)
         self.state["outlet_draft_mbar"] = round(p_out, 1)
+        self.state["stack_o2_pct"] = round(in_o2, 2)
+        self.state["stack_co_pct"] = round(in_co, 3)
+        self.state["stack_co2_pct"] = round(in_co2, 1)
+        self.state["stack_nox_ppm"] = round(in_nox, 0)
 
         # Update outlet stream
         if out_gas:

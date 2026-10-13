@@ -14,6 +14,7 @@ from .rotary_kiln import RotaryKiln
 from .grate_cooler import GrateCooler
 from .fan import IDFan
 from .mixer_splitter import StreamMixer, StreamSplitter, DamperValve, FuelMixer, AirMixer, GasMixer
+from .stream_sensor import StreamSensor
 
 BLOCK_REGISTRY: Dict[str, Type[BlockBase]] = {
     "GravimetricFeeder": GravimetricFeeder,
@@ -24,6 +25,7 @@ BLOCK_REGISTRY: Dict[str, Type[BlockBase]] = {
     "RotaryKiln": RotaryKiln,
     "GrateCooler": GrateCooler,
     "IDFan": IDFan,
+    "StreamSensor": StreamSensor,
     "StreamMixer": StreamMixer,
     "FuelMixer": FuelMixer,
     "AirMixer": AirMixer,
@@ -78,6 +80,7 @@ __all__ = [
     "RotaryKiln",
     "GrateCooler",
     "IDFan",
+    "StreamSensor",
     "StreamMixer",
     "FuelMixer",
     "AirMixer",

@@ -33,6 +33,7 @@ class ModularEngineManager:
         # Default to Kiln 3 Pyroprocessing Plant template
         self.active_graph: FlowsheetGraph = load_template_graph("kiln_3_pyroprocess")
         self.solver: FlowsheetSolver = FlowsheetSolver(self.active_graph)
+        self.live_parameters: Dict[str, Dict[str, Any]] = {}
         # Solve initial steady state
         self.solver.solve_steady_state()
         logger.info(f"Initialized ModularEngineManager with default graph '{self.active_graph.name}'")
@@ -56,6 +57,7 @@ class ModularEngineManager:
         """Replaces active flowsheet graph with user graph data."""
         self.active_graph = FlowsheetGraph.from_dict(data, block_factory=get_block_class)
         self.solver = FlowsheetSolver(self.active_graph)
+        self.live_parameters.clear()
         res = self.solver.solve_steady_state()
         graph_dict = self.active_graph.to_dict()
         return {
@@ -75,6 +77,22 @@ class ModularEngineManager:
     def solve_graph_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """Solves a flowsheet graph on-the-fly and synchronizes active graph and solver."""
         temp_graph = FlowsheetGraph.from_dict(data, block_factory=get_block_class)
+        # Preserve live parameter updates (from OPC UA or live setpoint writes) so Solve Balances doesn't overwrite with stale client values
+        for b_id, params in self.live_parameters.items():
+            if b_id in temp_graph.blocks:
+                b = temp_graph.blocks[b_id]
+                for p_name, p_val in params.items():
+                    b.set_parameter(p_name, p_val)
+                    if b.block_type in ("GravimetricFeeder", "FuelFeeder") and p_name == "nominal_rate_tph":
+                        try:
+                            num_val = float(p_val)
+                            b.state["actual_feed_rate_tph" if b.block_type == "GravimetricFeeder" else "actual_rate_tph"] = num_val
+                            for s in temp_graph.get_block_outlets(b_id).values():
+                                if s:
+                                    s.mass_flow_tph = num_val
+                        except Exception:
+                            pass
+
         temp_solver = FlowsheetSolver(temp_graph)
         res = temp_solver.solve_steady_state()
         self.active_graph = temp_graph
@@ -98,6 +116,7 @@ class ModularEngineManager:
             ):
                 param_name = "nominal_rate_tph"
             b.set_parameter(param_name, value)
+            self.live_parameters.setdefault(block_id, {})[param_name] = value
             if b.block_type in ("GravimetricFeeder", "FuelFeeder") and param_name == "nominal_rate_tph":
                 try:
                     num_val = float(value)

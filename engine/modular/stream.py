@@ -14,6 +14,7 @@ class StreamPhase(str, Enum):
     FUEL = "FUEL"
     AIR = "AIR"
     LIQUID = "LIQUID"
+    ANY = "ANY"
 
 
 class ProcessStream:
