@@ -26,7 +26,12 @@ from interfaces.opc_ua_client_bridge import CementOpcUaClientBridge
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(message)s")
 logger = logging.getLogger("MasterServer")
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+if getattr(sys, "frozen", False):
+    EXE_DIR = os.path.dirname(os.path.abspath(sys.executable))
+    BUNDLE_DIR = getattr(sys, "_MEIPASS", EXE_DIR)
+    BASE_DIR = EXE_DIR if os.path.exists(os.path.join(EXE_DIR, "simulator")) else BUNDLE_DIR
+else:
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SIMULATOR_DIR = os.path.join(BASE_DIR, "simulator")
 CONFIG_PATH = os.path.join(BASE_DIR, "config", "plant_config.json")
 

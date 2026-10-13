@@ -4,6 +4,7 @@ solver runtime, file persistence, and OPC UA dynamic tag synchronization.
 """
 
 import os
+import sys
 import json
 import logging
 from typing import Dict, Any, List, Optional
@@ -23,11 +24,19 @@ class ModularEngineManager:
     """
 
     def __init__(self, storage_dir: Optional[str] = None):
-        self.storage_dir = storage_dir or os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-            "config",
-            "flowsheets",
-        )
+        if storage_dir:
+            self.storage_dir = storage_dir
+        elif getattr(sys, "frozen", False):
+            exe_dir = os.path.dirname(os.path.abspath(sys.executable))
+            bundle_dir = getattr(sys, "_MEIPASS", exe_dir)
+            custom_dir = os.path.join(exe_dir, "config", "flowsheets")
+            self.storage_dir = custom_dir if os.path.exists(custom_dir) else os.path.join(bundle_dir, "config", "flowsheets")
+        else:
+            self.storage_dir = os.path.join(
+                os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+                "config",
+                "flowsheets",
+            )
         os.makedirs(self.storage_dir, exist_ok=True)
 
         # Default to Kiln 3 Pyroprocessing Plant template
