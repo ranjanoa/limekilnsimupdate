@@ -366,6 +366,8 @@ class FirstPrinciplesEngine:
             else:
                 t_copy["value"] = round(float(self.custom_tag_values.get(tid, t.get("default", 0.0))), 2)
 
+            t_copy["live_value"] = t_copy["value"]
+
             # Determine quality / connectivity indicator
             if t.get("source") == "opc_ua":
                 t_copy["status"] = "OPC_BOUND"

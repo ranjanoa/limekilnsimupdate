@@ -14,7 +14,7 @@
         "y": -40
       },
       "parameters": {
-        "nominal_rate_tph": 280,
+        "nominal_rate_tph": 265,
         "time_constant_s": 1.5,
         "temperature_c": 60,
         "moisture_pct": 0.8,
@@ -25,8 +25,8 @@
         "fe2o3_pct": 2.1
       },
       "state": {
-        "actual_feed_rate_tph": 280,
-        "accumulated_tonnage_t": 0,
+        "actual_feed_rate_tph": 265,
+        "accumulated_tonnage_t": 9.013750000000016,
         "feeder_status": "RUNNING",
         "caco3_pct": 76.85,
         "loi_pct": 34.91,
@@ -69,12 +69,14 @@
         "heat_loss_pct": 1.5
       },
       "state": {
-        "gas_temp_c": 296.2,
-        "meal_temp_c": 519.9,
+        "gas_temp_c": 291.7,
+        "meal_temp_c": 504,
         "pressure_drop_mbar": 5,
-        "heat_transferred_gjh": 109.36,
-        "heat_loss_gjh": 3.19,
-        "dust_carryover_tph": 4.2
+        "heat_transferred_gjh": 100.12,
+        "heat_loss_gjh": 2.97,
+        "dust_carryover_tph": 3.98,
+        "dynamic_gas_temp_c": 291.7,
+        "dynamic_meal_temp_c": 504
       },
       "ports": {
         "in_gas": {
@@ -128,12 +130,14 @@
         "heat_loss_pct": 1.5
       },
       "state": {
-        "gas_temp_c": 601.1,
-        "meal_temp_c": 697.5,
+        "gas_temp_c": 583.4,
+        "meal_temp_c": 674.9,
         "pressure_drop_mbar": 5.5,
-        "heat_transferred_gjh": 46.33,
-        "heat_loss_gjh": 3.96,
-        "dust_carryover_tph": 4.14
+        "heat_transferred_gjh": 42.55,
+        "heat_loss_gjh": 3.69,
+        "dust_carryover_tph": 3.92,
+        "dynamic_gas_temp_c": 583.4,
+        "dynamic_meal_temp_c": 674.9
       },
       "ports": {
         "in_gas": {
@@ -187,12 +191,14 @@
         "heat_loss_pct": 1.5
       },
       "state": {
-        "gas_temp_c": 736.5,
-        "meal_temp_c": 793.7,
+        "gas_temp_c": 715.1,
+        "meal_temp_c": 772,
         "pressure_drop_mbar": 5.5,
-        "heat_transferred_gjh": 25.68,
-        "heat_loss_gjh": 4.41,
-        "dust_carryover_tph": 4.07
+        "heat_transferred_gjh": 24.66,
+        "heat_loss_gjh": 4.12,
+        "dust_carryover_tph": 3.86,
+        "dynamic_gas_temp_c": 715.1,
+        "dynamic_meal_temp_c": 772
       },
       "ports": {
         "in_gas": {
@@ -246,12 +252,14 @@
         "heat_loss_pct": 1.5
       },
       "state": {
-        "gas_temp_c": 817.7,
-        "meal_temp_c": 860.1,
+        "gas_temp_c": 797.5,
+        "meal_temp_c": 840.8,
         "pressure_drop_mbar": 5.8,
-        "heat_transferred_gjh": 17.83,
-        "heat_loss_gjh": 4.73,
-        "dust_carryover_tph": 4.01
+        "heat_transferred_gjh": 17.26,
+        "heat_loss_gjh": 4.44,
+        "dust_carryover_tph": 3.8,
+        "dynamic_gas_temp_c": 797.5,
+        "dynamic_meal_temp_c": 840.8
       },
       "ports": {
         "in_gas": {
@@ -294,8 +302,8 @@
       "type": "CalcinerReactor",
       "category": "Combustion",
       "position": {
-        "x": 720,
-        "y": 500
+        "x": 820,
+        "y": 620
       },
       "parameters": {
         "volume_m3": 1100,
@@ -305,12 +313,14 @@
         "target_temp_c": 865
       },
       "state": {
-        "calciner_temp_c": 868.9,
-        "calcination_degree_pct": 91.2,
-        "co2_released_tph": 81.23,
+        "calciner_temp_c": 848.6,
+        "calcination_degree_pct": 89.8,
+        "co2_released_tph": 75.25,
         "heat_input_mw": 90.75,
         "heat_loss_gjh": 23.68,
-        "apparent_calcination_heat_gjh": 329.22
+        "apparent_calcination_heat_gjh": 304.96,
+        "dynamic_temp_c": 848.6,
+        "dynamic_alpha_pct": 89.8
       },
       "ports": {
         "in_meal": {
@@ -377,8 +387,8 @@
       "type": "FuelFeeder",
       "category": "Feeding",
       "position": {
-        "x": 560,
-        "y": 220
+        "x": 640,
+        "y": 440
       },
       "parameters": {
         "fuel_name": "Petcoke & CDR",
@@ -421,12 +431,14 @@
         "heat_loss_pct": 1.5
       },
       "state": {
-        "gas_temp_c": 878.9,
-        "meal_temp_c": 858.9,
+        "gas_temp_c": 859.4,
+        "meal_temp_c": 839.4,
         "pressure_drop_mbar": 5,
         "heat_transferred_gjh": 0,
-        "heat_loss_gjh": 4.62,
-        "dust_carryover_tph": 2.74
+        "heat_loss_gjh": 4.33,
+        "dust_carryover_tph": 2.61,
+        "dynamic_gas_temp_c": 859.4,
+        "dynamic_meal_temp_c": 839.4
       },
       "ports": {
         "in_gas": {
@@ -469,8 +481,8 @@
       "type": "RotaryKiln",
       "category": "Pyroprocess",
       "position": {
-        "x": 860,
-        "y": 680
+        "x": 820,
+        "y": 820
       },
       "parameters": {
         "length_m": 72,
@@ -481,14 +493,16 @@
         "shell_heat_loss_mw": 14.8
       },
       "state": {
-        "burning_zone_temp_c": 1407.2,
-        "kiln_inlet_gas_temp_c": 1041.4,
+        "burning_zone_temp_c": 1196.3,
+        "kiln_inlet_gas_temp_c": 953,
         "kiln_drive_torque_kwn": 182,
         "bed_residence_time_min": 20.6,
-        "free_lime_pct": 1.96,
-        "c3s_pct": 58.2,
-        "clinker_rate_tph": 172.04,
-        "heat_loss_gjh": 53.28
+        "free_lime_pct": 6,
+        "c3s_pct": 43.1,
+        "clinker_rate_tph": 168.49,
+        "heat_loss_gjh": 53.28,
+        "dynamic_bz_temp_c": 1196.3,
+        "dynamic_clinker_tph": 168.49
       },
       "ports": {
         "in_meal_calcined": {
@@ -548,19 +562,19 @@
       "category": "Feeding",
       "position": {
         "x": 540,
-        "y": 760
+        "y": 880
       },
       "parameters": {
         "fuel_name": "Petcoke Main",
-        "nominal_rate_tph": 7.2,
+        "nominal_rate_tph": 0,
         "lhv_mj_kg": 31.4,
         "ash_pct": 0.8,
         "moisture_pct": 1
       },
       "state": {
-        "actual_rate_tph": 7.2,
-        "heat_input_mw": 62.8,
-        "heat_input_gjh": 226.08,
+        "actual_rate_tph": 0,
+        "heat_input_mw": 0,
+        "heat_input_gjh": 0,
         "heat_loss_gjh": 0
       },
       "ports": {
@@ -580,8 +594,8 @@
       "type": "GrateCooler",
       "category": "Cooling",
       "position": {
-        "x": 1320,
-        "y": 680
+        "x": 1340,
+        "y": 820
       },
       "parameters": {
         "grate_area_m2": 105,
@@ -592,13 +606,15 @@
         "clinker_target_temp_c": 95
       },
       "state": {
-        "secondary_air_temp_c": 925.8,
-        "tertiary_air_temp_c": 799.7,
-        "cooler_vent_temp_c": 231.6,
+        "secondary_air_temp_c": 795.9,
+        "tertiary_air_temp_c": 688.2,
+        "cooler_vent_temp_c": 194.4,
         "clinker_exit_temp_c": 95,
-        "recuperated_heat_gjh": 179.66,
+        "recuperated_heat_gjh": 147.34,
         "cooler_hydraulic_press_bar": 92,
-        "heat_loss_gjh": 9.71
+        "heat_loss_gjh": 7.96,
+        "dynamic_sec_temp_c": 795.9,
+        "dynamic_tert_temp_c": 688.2
       },
       "ports": {
         "in_clinker_hot": {
@@ -668,10 +684,10 @@
         "fan_efficiency": 0.78
       },
       "state": {
-        "actual_flow_nm3h": 253537.4,
+        "actual_flow_nm3h": 243877.6,
         "fan_dp_mbar": 45.48,
-        "motor_power_kw": 855.8,
-        "motor_current_a": 813.8,
+        "motor_power_kw": 816.7,
+        "motor_current_a": 776.6,
         "inlet_draft_mbar": -54.8,
         "outlet_draft_mbar": -9.3,
         "heat_loss_gjh": 0
@@ -701,8 +717,8 @@
       "type": "SiloStorage",
       "category": "Feeding",
       "position": {
-        "x": 1560,
-        "y": 580
+        "x": 1840,
+        "y": 800
       },
       "parameters": {
         "capacity_tons": 50000,
@@ -746,11 +762,11 @@
         "port": "in_meal"
       },
       "phase": "SOLID",
-      "mass_flow_tph": 280,
+      "mass_flow_tph": 265,
       "volume_flow_nm3h": null,
       "temperature_c": 60,
       "pressure_mbar": 0,
-      "enthalpy_gjh": 79.229,
+      "enthalpy_gjh": 74.985,
       "composition": {
         "CaCO3_pct": 76.85,
         "MgCO3_pct": 2.15,
@@ -773,11 +789,11 @@
         "port": "in_meal"
       },
       "phase": "SOLID",
-      "mass_flow_tph": 275.8,
+      "mass_flow_tph": 261.025,
       "volume_flow_nm3h": null,
-      "temperature_c": 519.85,
+      "temperature_c": 504,
       "pressure_mbar": -49.8,
-      "enthalpy_gjh": 206.808,
+      "enthalpy_gjh": 191.138,
       "composition": {
         "CaCO3_pct": 76.85,
         "MgCO3_pct": 2.15,
@@ -800,11 +816,11 @@
         "port": "in_meal"
       },
       "phase": "SOLID",
-      "mass_flow_tph": 271.663,
+      "mass_flow_tph": 257.11,
       "volume_flow_nm3h": null,
-      "temperature_c": 697.51,
+      "temperature_c": 674.9,
       "pressure_mbar": -44.3,
-      "enthalpy_gjh": 259.161,
+      "enthalpy_gjh": 238.342,
       "composition": {
         "CaCO3_pct": 76.85,
         "MgCO3_pct": 2.15,
@@ -827,11 +843,11 @@
         "port": "in_meal"
       },
       "phase": "SOLID",
-      "mass_flow_tph": 267.588,
+      "mass_flow_tph": 253.253,
       "volume_flow_nm3h": null,
-      "temperature_c": 793.68,
+      "temperature_c": 772,
       "pressure_mbar": -38.8,
-      "enthalpy_gjh": 286.299,
+      "enthalpy_gjh": 264.238,
       "composition": {
         "CaCO3_pct": 76.85,
         "MgCO3_pct": 2.15,
@@ -854,11 +870,11 @@
         "port": "in_meal"
       },
       "phase": "SOLID",
-      "mass_flow_tph": 263.574,
+      "mass_flow_tph": 249.454,
       "volume_flow_nm3h": null,
-      "temperature_c": 860.12,
+      "temperature_c": 840.8,
       "pressure_mbar": -33,
-      "enthalpy_gjh": 303.693,
+      "enthalpy_gjh": 281.361,
       "composition": {
         "CaCO3_pct": 76.85,
         "MgCO3_pct": 2.15,
@@ -907,9 +923,9 @@
       "phase": "AIR",
       "mass_flow_tph": 128.248,
       "volume_flow_nm3h": 99186.4,
-      "temperature_c": 799.69,
+      "temperature_c": 688.2,
       "pressure_mbar": -5,
-      "enthalpy_gjh": 155.432,
+      "enthalpy_gjh": 137.268,
       "composition": {
         "O2_pct": 20.9,
         "N2_pct": 79.1
@@ -927,11 +943,11 @@
         "port": "in_gas"
       },
       "phase": "GAS",
-      "mass_flow_tph": 99.191,
-      "volume_flow_nm3h": 74023.2,
-      "temperature_c": 1041.4,
+      "mass_flow_tph": 93.245,
+      "volume_flow_nm3h": 72202,
+      "temperature_c": 967.3,
       "pressure_mbar": -1.8,
-      "enthalpy_gjh": 151.884,
+      "enthalpy_gjh": 133.521,
       "composition": {
         "O2_pct": 2.2,
         "CO2_pct": 22.5,
@@ -951,13 +967,13 @@
         "port": "in_gas"
       },
       "phase": "GAS",
-      "mass_flow_tph": 320.578,
-      "volume_flow_nm3h": 239237.2,
-      "temperature_c": 868.86,
+      "mass_flow_tph": 308.636,
+      "volume_flow_nm3h": 233851.7,
+      "temperature_c": 848.6,
       "pressure_mbar": -28,
-      "enthalpy_gjh": 417.257,
+      "enthalpy_gjh": 393.572,
       "composition": {
-        "CO2_pct": 38.1,
+        "CO2_pct": 37.8,
         "O2_pct": 2.8,
         "N2_pct": 62,
         "H2O_pct": 7.2
@@ -975,19 +991,19 @@
         "port": "in_meal"
       },
       "phase": "SOLID",
-      "mass_flow_tph": 182.436,
+      "mass_flow_tph": 174.303,
       "volume_flow_nm3h": null,
-      "temperature_c": 868.86,
+      "temperature_c": 848.6,
       "pressure_mbar": -28,
-      "enthalpy_gjh": 212.174,
+      "enthalpy_gjh": 198.301,
       "composition": {
-        "CaO_pct": 56.74,
-        "CaCO3_pct": 9.76,
-        "SiO2_pct": 19.5,
-        "Al2O3_pct": 4.98,
-        "Fe2O3_pct": 3.03,
-        "MgO_pct": 1.48,
-        "LOI_pct": 4.29
+        "CaO_pct": 55.01,
+        "CaCO3_pct": 11.8,
+        "SiO2_pct": 19.32,
+        "Al2O3_pct": 4.94,
+        "Fe2O3_pct": 3.01,
+        "MgO_pct": 1.47,
+        "LOI_pct": 5.19
       }
     },
     {
@@ -1002,13 +1018,13 @@
         "port": "in_gas"
       },
       "phase": "GAS",
-      "mass_flow_tph": 323.314,
-      "volume_flow_nm3h": 241279.3,
-      "temperature_c": 878.86,
+      "mass_flow_tph": 311.251,
+      "volume_flow_nm3h": 235947.4,
+      "temperature_c": 859.4,
       "pressure_mbar": -33,
-      "enthalpy_gjh": 425.127,
+      "enthalpy_gjh": 401.318,
       "composition": {
-        "CO2_pct": 38.1,
+        "CO2_pct": 37.8,
         "O2_pct": 2.8,
         "N2_pct": 62,
         "H2O_pct": 7.2
@@ -1026,13 +1042,13 @@
         "port": "in_gas"
       },
       "phase": "GAS",
-      "mass_flow_tph": 327.328,
-      "volume_flow_nm3h": 244274.7,
-      "temperature_c": 817.73,
+      "mass_flow_tph": 315.051,
+      "volume_flow_nm3h": 238942.8,
+      "temperature_c": 797.5,
       "pressure_mbar": -38.8,
-      "enthalpy_gjh": 404.28,
+      "enthalpy_gjh": 380.91,
       "composition": {
-        "CO2_pct": 38.1,
+        "CO2_pct": 37.8,
         "O2_pct": 2.8,
         "N2_pct": 62,
         "H2O_pct": 7.2
@@ -1050,13 +1066,13 @@
         "port": "in_gas"
       },
       "phase": "GAS",
-      "mass_flow_tph": 331.403,
-      "volume_flow_nm3h": 247315.7,
-      "temperature_c": 736.54,
+      "mass_flow_tph": 318.91,
+      "volume_flow_nm3h": 241983.8,
+      "temperature_c": 715.1,
       "pressure_mbar": -44.3,
-      "enthalpy_gjh": 374.928,
+      "enthalpy_gjh": 352.078,
       "composition": {
-        "CO2_pct": 38.1,
+        "CO2_pct": 37.8,
         "O2_pct": 2.8,
         "N2_pct": 62,
         "H2O_pct": 7.2
@@ -1074,13 +1090,13 @@
         "port": "in_gas"
       },
       "phase": "GAS",
-      "mass_flow_tph": 335.54,
-      "volume_flow_nm3h": 250403.1,
-      "temperature_c": 601.06,
+      "mass_flow_tph": 322.818,
+      "volume_flow_nm3h": 245071.1,
+      "temperature_c": 583.4,
       "pressure_mbar": -49.8,
-      "enthalpy_gjh": 322.78,
+      "enthalpy_gjh": 303.575,
       "composition": {
-        "CO2_pct": 38.1,
+        "CO2_pct": 37.8,
         "O2_pct": 2.8,
         "N2_pct": 62,
         "H2O_pct": 7.2
@@ -1098,13 +1114,13 @@
         "port": "in_gas"
       },
       "phase": "GAS",
-      "mass_flow_tph": 339.74,
-      "volume_flow_nm3h": 253537.4,
-      "temperature_c": 296.17,
+      "mass_flow_tph": 326.796,
+      "volume_flow_nm3h": 248205.4,
+      "temperature_c": 291.7,
       "pressure_mbar": -54.8,
-      "enthalpy_gjh": 204.261,
+      "enthalpy_gjh": 194.781,
       "composition": {
-        "CO2_pct": 38.1,
+        "CO2_pct": 37.8,
         "O2_pct": 2.8,
         "N2_pct": 62,
         "H2O_pct": 7.2
@@ -1122,19 +1138,19 @@
         "port": "in_meal_calcined"
       },
       "phase": "SOLID",
-      "mass_flow_tph": 179.699,
+      "mass_flow_tph": 171.688,
       "volume_flow_nm3h": null,
-      "temperature_c": 858.86,
+      "temperature_c": 839.4,
       "pressure_mbar": -28,
-      "enthalpy_gjh": 206.736,
+      "enthalpy_gjh": 193.405,
       "composition": {
-        "CaO_pct": 56.74,
-        "CaCO3_pct": 9.76,
-        "SiO2_pct": 19.5,
-        "Al2O3_pct": 4.98,
-        "Fe2O3_pct": 3.03,
-        "MgO_pct": 1.48,
-        "LOI_pct": 4.29
+        "CaO_pct": 55.01,
+        "CaCO3_pct": 11.8,
+        "SiO2_pct": 19.32,
+        "Al2O3_pct": 4.94,
+        "Fe2O3_pct": 3.01,
+        "MgO_pct": 1.47,
+        "LOI_pct": 5.19
       }
     },
     {
@@ -1149,11 +1165,11 @@
         "port": "in_flame_fuel"
       },
       "phase": "FUEL",
-      "mass_flow_tph": 7.2,
+      "mass_flow_tph": 0,
       "volume_flow_nm3h": null,
       "temperature_c": 25,
       "pressure_mbar": 0,
-      "enthalpy_gjh": 228.595,
+      "enthalpy_gjh": 0,
       "composition": {
         "fuel_name": "Petcoke Main",
         "lhv_mj_kg": 31.4,
@@ -1175,9 +1191,9 @@
       "phase": "AIR",
       "mass_flow_tph": 84.337,
       "volume_flow_nm3h": 65225.8,
-      "temperature_c": 925.8,
+      "temperature_c": 795.9,
       "pressure_mbar": -0.5,
-      "enthalpy_gjh": 116.09,
+      "enthalpy_gjh": 101.815,
       "composition": {
         "O2_pct": 20.9,
         "N2_pct": 79.1
@@ -1195,17 +1211,17 @@
         "port": "in_clinker_hot"
       },
       "phase": "SOLID",
-      "mass_flow_tph": 172.045,
+      "mass_flow_tph": 168.49,
       "volume_flow_nm3h": null,
-      "temperature_c": 1392.23,
+      "temperature_c": 1181.3,
       "pressure_mbar": 0,
-      "enthalpy_gjh": 323.196,
+      "enthalpy_gjh": 265.664,
       "composition": {
-        "C3S_pct": 58.2,
-        "C2S_pct": 17.8,
+        "C3S_pct": 43.1,
+        "C2S_pct": 32.9,
         "C3A_pct": 7.8,
         "C4AF_pct": 10.2,
-        "Free_CaO_pct": 1.96,
+        "Free_CaO_pct": 6,
         "MgO_pct": 1.4
       }
     },
@@ -1221,17 +1237,17 @@
         "port": "in_solid"
       },
       "phase": "SOLID",
-      "mass_flow_tph": 172.045,
+      "mass_flow_tph": 168.49,
       "volume_flow_nm3h": null,
       "temperature_c": 95,
       "pressure_mbar": 0,
-      "enthalpy_gjh": 54.274,
+      "enthalpy_gjh": 53.152,
       "composition": {
-        "C3S_pct": 58.2,
-        "C2S_pct": 17.8,
+        "C3S_pct": 43.1,
+        "C2S_pct": 32.9,
         "C3A_pct": 7.8,
         "C4AF_pct": 10.2,
-        "Free_CaO_pct": 1.96,
+        "Free_CaO_pct": 6,
         "MgO_pct": 1.4
       }
     }

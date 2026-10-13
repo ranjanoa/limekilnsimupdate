@@ -36,6 +36,80 @@ modular_manager = ModularEngineManager()
 active_opc_server = None
 active_event_loop = None
 
+def sync_modular_telemetry_to_engine(modular_mgr, eng):
+    """Synchronizes dynamic block states from the running modular flowsheet into the main engine."""
+    try:
+        if not hasattr(modular_mgr, "active_graph") or not modular_mgr.active_graph:
+            return
+        blocks = modular_mgr.active_graph.blocks
+        # 1. Feed rate
+        feed_b = blocks.get("FEED_01")
+        if feed_b:
+            feed_rate = feed_b.state.get("actual_feed_rate_tph") or feed_b.parameters.get("nominal_rate_tph")
+            if feed_rate is not None:
+                eng.feed_rate = float(feed_rate)
+        # 2. Kiln
+        kiln_b = blocks.get("KILN_01")
+        if kiln_b:
+            bz_temp = kiln_b.state.get("burning_zone_temp_c")
+            if bz_temp is not None:
+                eng.sintering_temp = float(bz_temp)
+            free_lime = kiln_b.state.get("free_lime_pct")
+            if free_lime is not None:
+                eng.free_lime = float(free_lime)
+            clinker_rate = kiln_b.state.get("clinker_rate_tph")
+            if clinker_rate is not None:
+                eng.clinker_production = float(clinker_rate)
+            torque = kiln_b.state.get("kiln_drive_torque_kwn")
+            if torque is not None:
+                eng.kiln_drive_torque = float(torque)
+        # 3. Calciner
+        calc_b = blocks.get("CALC_01")
+        if calc_b:
+            calc_temp = calc_b.state.get("calciner_temp_c")
+            if calc_temp is not None:
+                eng.calciner_temp = float(calc_temp)
+            calc_deg = calc_b.state.get("calcination_degree_pct")
+            if calc_deg is not None:
+                eng.pc_calcination = float(calc_deg)
+        # 4. Cooler
+        cooler_b = blocks.get("COOLER_01")
+        if cooler_b:
+            sec_air = cooler_b.state.get("secondary_air_temp_c")
+            if sec_air is not None:
+                eng.secondary_air_t = float(sec_air)
+            tert_air = cooler_b.state.get("tertiary_air_temp_c")
+            if tert_air is not None:
+                eng.tertiary_air_t = float(tert_air)
+        # 5. Preheater top cyclone
+        cyc_b = blocks.get("CYC_01")
+        if cyc_b:
+            gas_t = cyc_b.state.get("gas_temp_c")
+            if gas_t is not None:
+                eng.ph_top_gas_t = float(gas_t)
+        # 6. ID Fan
+        fan_b = blocks.get("ID_FAN_01")
+        if fan_b:
+            draft = fan_b.state.get("inlet_draft_mbar")
+            if draft is not None:
+                eng.ph_top_draft = float(draft)
+    except Exception as e:
+        logger.debug(f"Telemetry sync error: {e}")
+
+def get_unified_tags_list(eng, modular_mgr):
+    """Combines baseline plant tags and running modular equipment tags into unified list."""
+    sync_modular_telemetry_to_engine(modular_mgr, eng)
+    base_tags = eng.get_tags_list()
+    base_tag_ids = {t["tag_id"] for t in base_tags}
+    
+    modular_tags = modular_mgr.get_opc_tags() if hasattr(modular_mgr, "get_opc_tags") else []
+    unified = list(base_tags)
+    for mt in modular_tags:
+        if mt["tag_id"] not in base_tag_ids:
+            unified.append(mt)
+            base_tag_ids.add(mt["tag_id"])
+    return unified
+
 class SimulatorRestHttpHandler(SimpleHTTPRequestHandler):
     """Serves static simulator files and provides REST API for live config, telemetry, tags & commands."""
     def __init__(self, *args, **kwargs):
@@ -97,7 +171,7 @@ class SimulatorRestHttpHandler(SimpleHTTPRequestHandler):
             self.send_header("Content-Type", "application/json")
             self._send_cors_headers()
             self.end_headers()
-            tags = engine.get_tags_list()
+            tags = get_unified_tags_list(engine, modular_manager)
             self.wfile.write(json.dumps(tags).encode("utf-8"))
         elif parsed.path == "/api/opc/status":
             self.send_response(200)
@@ -106,7 +180,7 @@ class SimulatorRestHttpHandler(SimpleHTTPRequestHandler):
             self.end_headers()
             with open(CONFIG_PATH, "r", encoding="utf-8") as f:
                 cfg = json.load(f)
-            tags = engine.get_tags_list()
+            tags = get_unified_tags_list(engine, modular_manager)
             opc_count = sum(1 for t in tags if t.get("source") == "opc_ua")
             local_count = sum(1 for t in tags if t.get("source") == "local")
             opc_status = {
@@ -334,6 +408,16 @@ class SimulatorRestHttpHandler(SimpleHTTPRequestHandler):
                 tag_id = body.get("tag_id")
                 val = body.get("value")
                 success = engine.set_tag_value(tag_id, val)
+                if "_SP_" in str(tag_id):
+                    parts = str(tag_id).split("_SP_")
+                    b_id = parts[0]
+                    p_name = parts[1].lower()
+                    modular_manager.update_block_parameter(b_id, p_name, val)
+                    success = True
+                elif tag_id == "Opt_FeedRate_SP":
+                    modular_manager.update_block_parameter("FEED_01", "nominal_rate_tph", val)
+                elif tag_id == "Opt_PCTemp_SP":
+                    modular_manager.update_block_parameter("CALC_01", "target_calciner_temp_c", val)
                 self.send_response(200 if success else 404)
                 self.send_header("Content-Type", "application/json")
                 self._send_cors_headers()
@@ -562,6 +646,7 @@ class SimulatorRestHttpHandler(SimpleHTTPRequestHandler):
                 body = json.loads(post_body.decode("utf-8")) if post_body and post_body.strip() else {}
                 dt = float(body.get("dt", 0.5))
                 step_res = modular_manager.step(dt)
+                sync_modular_telemetry_to_engine(modular_manager, engine)
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
                 self._send_cors_headers()

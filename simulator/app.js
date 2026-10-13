@@ -121,6 +121,7 @@ function initApp() {
   let currentTagFilter = 'all';
   let tagSearchTerm = '';
   let editingTagId = null;
+  let tagPollInterval = null;
 
   function openTagStudio(filterKeyword) {
     if (tagStudioModal) {
@@ -131,6 +132,9 @@ function initApp() {
       }
       loadTagsData();
       checkOpcStatus();
+      if (!tagPollInterval) {
+        tagPollInterval = setInterval(pollLiveTagValues, 1000);
+      }
     }
   }
   window.openTagStudio = openTagStudio;
@@ -138,6 +142,66 @@ function initApp() {
   function closeTagStudio() {
     if (tagStudioModal) {
       tagStudioModal.classList.remove('open');
+    }
+    if (tagPollInterval) {
+      clearInterval(tagPollInterval);
+      tagPollInterval = null;
+    }
+  }
+
+  async function pollLiveTagValues() {
+    if (!tagStudioModal || !tagStudioModal.classList.contains('open')) return;
+    try {
+      const res = await fetch('/api/tags', { cache: 'no-store' });
+      if (!res.ok) return;
+      const payload = await res.json();
+      const incoming = Array.isArray(payload) ? payload : (payload.tags || []);
+      if (!incoming || incoming.length === 0) return;
+
+      if (incoming.length !== tagsData.length) {
+        tagsData = incoming;
+        updateTagCounters();
+        renderTagTable();
+        return;
+      }
+
+      incoming.forEach(inTag => {
+        const oldTag = tagsData.find(t => t.tag_id === inTag.tag_id);
+        if (oldTag) {
+          const rawVal = (inTag.live_value !== undefined && inTag.live_value !== null)
+            ? inTag.live_value
+            : ((inTag.value !== undefined && inTag.value !== null) ? inTag.value : inTag.default);
+          oldTag.live_value = inTag.live_value;
+          oldTag.value = inTag.value;
+
+          const el = document.getElementById(`live_tag_${inTag.tag_id}`);
+          if (el) {
+            const formatted = typeof rawVal === 'number'
+              ? (Math.abs(rawVal) > 100 ? rawVal.toFixed(1) : rawVal.toFixed(2))
+              : (rawVal ?? '-');
+            const formattedStr = String(formatted);
+            if (el.textContent !== formattedStr) {
+              el.textContent = formattedStr;
+              el.classList.add('val-updated');
+              setTimeout(() => el.classList.remove('val-updated'), 400);
+            }
+          }
+
+          if (inTag.category === 'setpoint' && inTag.source === 'local') {
+            const input = tagGridTableBody?.querySelector(`.sp-edit-input[data-tag="${inTag.tag_id}"]`);
+            if (input && document.activeElement !== input) {
+              const formatted = typeof rawVal === 'number'
+                ? (Math.abs(rawVal) > 100 ? rawVal.toFixed(1) : rawVal.toFixed(2))
+                : (rawVal ?? '');
+              if (input.value !== String(formatted)) {
+                input.value = formatted;
+              }
+            }
+          }
+        }
+      });
+    } catch (e) {
+      // quiet poll
     }
   }
 
@@ -194,7 +258,7 @@ function initApp() {
         const mId = (tag.tag_id || '').toLowerCase().includes(q);
         const mName = (tag.name || '').toLowerCase().includes(q);
         const mHmi = (tag.hmi_tag || '').toLowerCase().includes(q);
-        const mNode = (tag.opc_node_id || '').toLowerCase().includes(q);
+        const mNode = (tag.opc_node_id || tag.node_id || '').toLowerCase().includes(q);
         if (!mId && !mName && !mHmi && !mNode) return false;
       }
       return true;
@@ -209,9 +273,12 @@ function initApp() {
       const isSP = tag.category === 'setpoint';
       const isOpc = tag.source === 'opc_ua';
       const isCustom = !!tag.custom;
-      const val = tag.live_value !== undefined
-        ? (typeof tag.live_value === 'number' ? (Math.abs(tag.live_value) > 100 ? tag.live_value.toFixed(1) : tag.live_value.toFixed(2)) : tag.live_value)
-        : (tag.default ?? '-');
+      const rawVal = (tag.live_value !== undefined && tag.live_value !== null)
+        ? tag.live_value
+        : ((tag.value !== undefined && tag.value !== null) ? tag.value : (tag.default ?? '-'));
+      const val = typeof rawVal === 'number'
+        ? (Math.abs(rawVal) > 100 ? rawVal.toFixed(1) : rawVal.toFixed(2))
+        : rawVal;
 
       // Value column
       let valHtml = '';
@@ -267,10 +334,10 @@ function initApp() {
           </td>
           <td>${valHtml}</td>
           <td><span style="color: var(--text-muted); font-size: 11px;">${tag.unit || ''}</span></td>
-          <td><span class="node-code" title="${tag.opc_node_id || ''}">${tag.opc_node_id || '-'}</span></td>
+          <td><span class="node-code" title="${tag.opc_node_id || tag.node_id || ''}">${tag.opc_node_id || tag.node_id || '-'}</span></td>
           <td>
-            <span class="direction-badge ${tag.opc_direction === 'write' ? 'write' : 'read'}">
-              ${tag.opc_direction === 'write' ? 'WRITE (SP)' : 'READ (PV)'}
+            <span class="direction-badge ${tag.opc_direction === 'write' || tag.access === 'RW' ? 'write' : 'read'}">
+              ${tag.opc_direction === 'write' || tag.access === 'RW' ? 'WRITE (SP)' : 'READ (PV)'}
             </span>
           </td>
           <td style="color: var(--text-dim); font-family: var(--font-mono); font-size: 10px;">${rangeText}</td>

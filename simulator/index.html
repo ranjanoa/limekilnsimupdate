@@ -33,7 +33,8 @@
         </div>
 
         <button id="btnBuilderDeploy" class="hdr-btn btn-opc" title="Deploy Flowsheet & Auto-Register Variables to OPC UA Server">🔌 Deploy OPC UA</button>
-        <button id="btnTagStudio" class="hdr-btn btn-tag-studio" title="Open Configurable Tag & OPC UA Connection Studio">📡 Tag & OPC Studio</button>
+        <button id="btnTagStudio" class="hdr-btn btn-tag-studio" title="Open Configurable Tag & OPC UA Connection Studio Modal">📡 Tag & OPC Studio</button>
+        <a id="btnTagStudioPopout" href="opc_studio.html" target="_blank" class="hdr-btn btn-tag-studio" title="Open Tag & OPC Studio in a separate browser tab/window" style="text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">⧉ Popout Studio</a>
       </div>
 
       <div class="tier-right">
@@ -331,7 +332,10 @@
             <span id="tagStudioOpcStatusText">OPC UA Server: opc.tcp://0.0.0.0:4841</span>
           </span>
         </div>
-        <button class="modal-close" id="btnCloseTagStudio">×</button>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <a href="opc_studio.html" target="_blank" class="btn btn-sm btn-outline" style="text-decoration: none; font-size: 11px; padding: 4px 10px; color: #38BDF8; border-color: rgba(56,189,248,0.4); display: inline-flex; align-items: center; gap: 4px;" title="Open OPC Studio in Separate Tab/Window">⧉ Open in New Tab</a>
+          <button class="modal-close" id="btnCloseTagStudio">×</button>
+        </div>
       </div>
 
       <div class="modal-body tag-studio-body">

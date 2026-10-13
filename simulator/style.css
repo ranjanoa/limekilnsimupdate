@@ -1907,6 +1907,13 @@ input:checked + .toggle-slider:before {
   color: #86EFAC;
 }
 
+.live-val-badge.val-updated {
+  color: #38BDF8 !important;
+  text-shadow: 0 0 10px rgba(56, 189, 248, 0.9);
+  transform: scale(1.08);
+  transition: all 0.15s ease-out;
+}
+
 .direction-badge {
   font-size: 9px;
   font-weight: 700;

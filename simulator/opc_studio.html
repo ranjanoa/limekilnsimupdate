@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PROSIM STUDIO — Online Tag & OPC UA Studio</title>
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* Standalone Studio Page Layout */
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background: var(--bg-main, #0F172A);
+      color: var(--text-main, #E2E8F0);
+      font-family: var(--font-sans, 'Inter', sans-serif);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .studio-page-header {
+      background: linear-gradient(180deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.9));
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+      z-index: 100;
+    }
+
+    .studio-brand-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .studio-logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 800;
+      font-size: 15px;
+      letter-spacing: 0.5px;
+      color: #38BDF8;
+    }
+
+    .studio-title-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      padding: 3px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #7DD3FC;
+    }
+
+    .studio-actions-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .live-indicator-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      border-radius: 14px;
+      padding: 4px 10px;
+      font-size: 11px;
+      color: #6EE7B7;
+      font-family: var(--font-mono, monospace);
+      font-weight: 600;
+    }
+
+    .live-pulse-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #10B981;
+      box-shadow: 0 0 8px #10B981;
+      animation: opcDotPulse 1.8s infinite ease-in-out;
+    }
+
+    .studio-main-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 16px 24px;
+      gap: 14px;
+      overflow: hidden;
+    }
+
+    .studio-card-strip {
+      background: rgba(30, 41, 59, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      padding: 12px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+    }
+
+    .studio-table-container {
+      flex: 1;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+    }
+
+    .studio-table-scroll {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: auto;
+    }
+
+    .studio-table-scroll table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    .studio-table-scroll th {
+      position: sticky;
+      top: 0;
+      background: #1E293B;
+      color: #94A3B8;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 10px 14px;
+      border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+      z-index: 10;
+    }
+
+    .studio-table-scroll td {
+      padding: 8px 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 12px;
+    }
+
+    .studio-table-scroll tr:hover td {
+      background: rgba(56, 189, 248, 0.04);
+    }
+
+    .studio-footer-status {
+      background: rgba(15, 23, 42, 0.95);
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 8px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: var(--text-dim, #64748B);
+      flex-shrink: 0;
+    }
+
+    .btn-action-icon {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      font-weight: 500;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TOP HEADER -->
+  <header class="studio-page-header">
+    <div class="studio-brand-group">
+      <div class="studio-logo">
+        <span style="font-size: 20px;">⚡</span> PROSIM STUDIO
+      </div>
+      <div class="studio-title-badge">
+        <span>📡</span> Dedicated Tag &amp; OPC UA Connection Studio
+      </div>
+      <div class="badge-opc-status" id="opcEndpointBadge">
+        <span class="status-dot-sm"></span>
+        <span id="opcServerEndpointText">opc.tcp://0.0.0.0:4841</span>
+      </div>
+    </div>
+
+    <div class="studio-actions-group">
+      <div class="live-indicator-pill">
+        <span class="live-pulse-dot"></span>
+        <span id="liveSyncText">Live Sync: Active (1s)</span>
+      </div>
+      <button id="btnExportCsv" class="btn btn-sm btn-outline btn-action-icon" title="Export all tags and values to CSV">
+        📊 Export CSV
+      </button>
+      <button id="btnExportJson" class="btn btn-sm btn-outline btn-action-icon" title="Export all tags configuration as JSON">
+        ⬇ Export JSON
+      </button>
+      <a href="index.html" class="btn btn-sm btn-secondary btn-action-icon" style="color: #F8FAFC;" title="Go back to Simulation Canvas">
+        ← Back to Canvas
+      </a>
+    </div>
+  </header>
+
+  <!-- MAIN BODY -->
+  <main class="studio-main-container">
+    <!-- TOP SUMMARY & QUICK CONTROLS STRIP -->
+    <div class="studio-card-strip">
+      <div class="tag-metrics-strip" style="flex: 1; min-width: 320px;">
+        <div class="tag-metric-box">
+          <span class="tm-lbl">TOTAL TAGS</span>
+          <strong class="tm-val cyan" id="statTotalTags">0</strong>
+        </div>
+        <div class="tag-metric-box">
+          <span class="tm-lbl">SETPOINTS</span>
+          <strong class="tm-val blue" id="statSetpoints">0</strong>
+        </div>
+        <div class="tag-metric-box">
+          <span class="tm-lbl">MEASUREMENTS</span>
+          <strong class="tm-val purple" id="statMeasurements">0</strong>
+        </div>
+        <div class="tag-metric-box">
+          <span class="tm-lbl">⚡ OPC UA MAPPED</span>
+          <strong class="tm-val green" id="statOpcTags">0</strong>
+        </div>
+        <div class="tag-metric-box">
+          <span class="tm-lbl">💻 LOCAL CONTROL</span>
+          <strong class="tm-val amber" id="statLocalTags">0</strong>
+        </div>
+      </div>
+
+      <div class="tag-topbar-actions">
+        <button id="btnTestOpc" class="btn btn-sm btn-outline" title="Ping & Test OPC UA Server Availability">🔌 Test OPC Connection</button>
+        <button id="btnSetAllLocal" class="btn btn-sm btn-secondary" title="Switch all setpoints to Local operator control">💻 All Setpoints Local</button>
+        <button id="btnSetAllOpc" class="btn btn-sm btn-secondary" title="Switch all setpoints to external OPC UA control">⚡ All Setpoints OPC UA</button>
+        <button id="btnOpenAddTag" class="btn btn-sm btn-primary" title="Define a new measurement or setpoint tag">➕ Add Custom Tag</button>
+      </div>
+    </div>
+
+    <!-- SEARCH AND FILTER TOOLBAR -->
+    <div class="tag-filter-toolbar">
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="tagSearchInput" placeholder="Filter tags by name, ID, HMI tag, or Node ID..." autocomplete="off">
+        <button id="btnClearSearch" class="btn-micro" title="Clear Search">✕</button>
+      </div>
+
+      <div class="filter-tab-buttons">
+        <button class="filter-pill active" data-filter="all">All Tags (<span id="cntFilterAll">0</span>)</button>
+        <button class="filter-pill" data-filter="setpoint">Setpoints (<span id="cntFilterSP">0</span>)</button>
+        <button class="filter-pill" data-filter="measurement">Measurements (<span id="cntFilterPV">0</span>)</button>
+        <button class="filter-pill" data-filter="opc_ua">⚡ OPC UA (<span id="cntFilterOpc">0</span>)</button>
+        <button class="filter-pill" data-filter="local">💻 Local (<span id="cntFilterLocal">0</span>)</button>
+      </div>
+    </div>
+
+    <!-- CONNECTION NOTIFICATION / TEST RESULT BANNER -->
+    <div class="opc-test-banner" id="opcTestBanner" style="display: none;">
+      <span id="opcTestBannerIcon">ℹ</span>
+      <span id="opcTestBannerText">Testing OPC UA Server...</span>
+      <button id="btnCloseTestBanner" class="banner-close">✕</button>
+    </div>
+
+    <!-- TAGS DATA TABLE -->
+    <div class="studio-table-container">
+      <div class="studio-table-scroll">
+        <table class="tag-grid-table">
+          <thead>
+            <tr>
+              <th style="width: 240px;">Tag ID &amp; Description</th>
+              <th style="width: 95px;">HMI Tag</th>
+              <th style="width: 110px;">Category</th>
+              <th style="width: 135px;">Control Source</th>
+              <th style="width: 150px;">Live Value / Setpoint</th>
+              <th style="width: 65px;">Unit</th>
+              <th style="width: 250px;">OPC UA Node ID</th>
+              <th style="width: 85px;">Direction</th>
+              <th style="width: 95px;">Range</th>
+              <th style="width: 80px;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="tagGridTableBody">
+            <!-- Dynamically populated rows -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <!-- FOOTER STATUS BAR -->
+  <footer class="studio-footer-status">
+    <div>
+      💡 <span>Live telemetry streamed directly from active running simulation model. Values update dynamically in real time.</span>
+    </div>
+    <div id="footerMeta">
+      Endpoint: <code style="color: #38BDF8;">opc.tcp://127.0.0.1:4841</code> | Mode: <strong>SERVER</strong>
+    </div>
+  </footer>
+
+  <!-- MODAL: ADD / EDIT CUSTOM TAG -->
+  <div class="modal-backdrop" id="customTagModal" style="z-index: 1010;">
+    <div class="modal-dialog tag-modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-with-badge">
+          <h3 id="customTagModalTitle">➕ Add Custom Process Tag</h3>
+          <span class="badge" id="customTagBadge">Dynamic Tag Definition</span>
+        </div>
+        <button class="modal-close" id="btnCloseCustomTagModal">×</button>
+      </div>
+
+      <div class="modal-body tag-modal-body">
+        <form id="formCustomTag" onsubmit="return false;">
+          <div class="cfg-form-grid">
+            <div class="cfg-field">
+              <label>Tag ID: *</label>
+              <input type="text" id="tagEditId" placeholder="e.g. K3_TertiaryAir_T" required>
+              <span class="cfg-field-hint">Unique internal identifier for the variable</span>
+            </div>
+
+            <div class="cfg-field">
+              <label>Display Name / Description: *</label>
+              <input type="text" id="tagEditName" placeholder="e.g. Tertiary Air Duct Temperature" required>
+              <span class="cfg-field-hint">Human-readable description</span>
+            </div>
+
+            <div class="cfg-field">
+              <label>HMI Tag / DCS Name:</label>
+              <input type="text" id="tagEditHmi" placeholder="e.g. K3T04">
+              <span class="cfg-field-hint">Industrial DCS / SCADA reference tag</span>
+            </div>
+
+            <div class="cfg-field">
+              <label>Category: *</label>
+              <select id="tagEditCategory">
+                <option value="setpoint">🎯 Setpoint (Manipulated / RW)</option>
+                <option value="measurement" selected>📊 Process Measurement (PV / RO)</option>
+              </select>
+            </div>
+
+            <div class="cfg-field">
+              <label>Initial Control Source: *</label>
+              <select id="tagEditSource">
+                <option value="opc_ua" selected>⚡ OPC UA (Server Node / External)</option>
+                <option value="local">💻 Local (Internal Simulation)</option>
+              </select>
+            </div>
+
+            <div class="cfg-field">
+              <label>OPC UA Node ID: *</label>
+              <input type="text" id="tagEditNodeId" placeholder="ns=2;s=Kiln3.Telemetry.TertiaryAir_T" required>
+              <span class="cfg-field-hint">Full OPC UA Browse / Node Identifier</span>
+            </div>
+
+            <div class="cfg-field">
+              <label>OPC Direction: *</label>
+              <select id="tagEditDirection">
+                <option value="read">READ (Optimizer reads from Simulator)</option>
+                <option value="write">WRITE (Optimizer writes setpoint to Simulator)</option>
+              </select>
+            </div>
+
+            <div class="cfg-field">
+              <label>Engineering Unit:</label>
+              <input type="text" id="tagEditUnit" placeholder="e.g. °C, t/h, mbar, %">
+            </div>
+
+            <div class="cfg-field">
+              <label>Minimum Value (Min):</label>
+              <input type="number" step="any" id="tagEditMin" placeholder="Optional minimum">
+            </div>
+
+            <div class="cfg-field">
+              <label>Maximum Value (Max):</label>
+              <input type="number" step="any" id="tagEditMax" placeholder="Optional maximum">
+            </div>
+
+            <div class="cfg-field">
+              <label>Default Value:</label>
+              <input type="number" step="any" id="tagEditDef" placeholder="e.g. 0.0">
+            </div>
+          </div>
+        </form>
+
+        <div id="customTagStatusMsg" class="cfg-status-message"></div>
+      </div>
+
+      <div class="modal-footer">
+        <button id="btnCancelCustomTag" class="btn btn-secondary">Cancel</button>
+        <button id="btnSaveCustomTag" class="btn btn-primary">Save Tag Definition</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="opc_studio.js"></script>
+</body>
+</html>

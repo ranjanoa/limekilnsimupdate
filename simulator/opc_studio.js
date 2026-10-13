@@ -1,0 +1,627 @@
+/**
+ * PROSIM STUDIO — STANDALONE ONLINE TAG & OPC UA CONNECTION STUDIO
+ * Provides real-time tag telemetry monitoring, setpoint control, source toggling,
+ * CSV export, and OPC UA diagnostics in a dedicated browser tab.
+ */
+
+(function () {
+  'use strict';
+
+  // DOM Elements
+  const tagGridTableBody = document.getElementById('tagGridTableBody');
+  const tagSearchInput = document.getElementById('tagSearchInput');
+  const btnClearSearch = document.getElementById('btnClearSearch');
+  const statTotalTags = document.getElementById('statTotalTags');
+  const statSetpoints = document.getElementById('statSetpoints');
+  const statMeasurements = document.getElementById('statMeasurements');
+  const statOpcTags = document.getElementById('statOpcTags');
+  const statLocalTags = document.getElementById('statLocalTags');
+  const cntFilterAll = document.getElementById('cntFilterAll');
+  const cntFilterSP = document.getElementById('cntFilterSP');
+  const cntFilterPV = document.getElementById('cntFilterPV');
+  const cntFilterOpc = document.getElementById('cntFilterOpc');
+  const cntFilterLocal = document.getElementById('cntFilterLocal');
+  const opcEndpointBadge = document.getElementById('opcEndpointBadge');
+  const opcServerEndpointText = document.getElementById('opcServerEndpointText');
+  const opcTestBanner = document.getElementById('opcTestBanner');
+  const opcTestBannerIcon = document.getElementById('opcTestBannerIcon');
+  const opcTestBannerText = document.getElementById('opcTestBannerText');
+  const btnCloseTestBanner = document.getElementById('btnCloseTestBanner');
+  const btnTestOpc = document.getElementById('btnTestOpc');
+  const btnSetAllLocal = document.getElementById('btnSetAllLocal');
+  const btnSetAllOpc = document.getElementById('btnSetAllOpc');
+  const btnOpenAddTag = document.getElementById('btnOpenAddTag');
+  const btnExportCsv = document.getElementById('btnExportCsv');
+  const btnExportJson = document.getElementById('btnExportJson');
+  const footerMeta = document.getElementById('footerMeta');
+
+  // Custom Tag Modal Elements
+  const customTagModal = document.getElementById('customTagModal');
+  const btnCloseCustomTagModal = document.getElementById('btnCloseCustomTagModal');
+  const btnCancelCustomTag = document.getElementById('btnCancelCustomTag');
+  const btnSaveCustomTag = document.getElementById('btnSaveCustomTag');
+  const customTagModalTitle = document.getElementById('customTagModalTitle');
+  const customTagStatusMsg = document.getElementById('customTagStatusMsg');
+  const tagEditId = document.getElementById('tagEditId');
+  const tagEditName = document.getElementById('tagEditName');
+  const tagEditHmi = document.getElementById('tagEditHmi');
+  const tagEditCategory = document.getElementById('tagEditCategory');
+  const tagEditSource = document.getElementById('tagEditSource');
+  const tagEditNodeId = document.getElementById('tagEditNodeId');
+  const tagEditDirection = document.getElementById('tagEditDirection');
+  const tagEditUnit = document.getElementById('tagEditUnit');
+  const tagEditMin = document.getElementById('tagEditMin');
+  const tagEditMax = document.getElementById('tagEditMax');
+  const tagEditDef = document.getElementById('tagEditDef');
+
+  // Internal State
+  let tagsData = [];
+  let currentTagFilter = 'all';
+  let tagSearchTerm = '';
+  let editingTagId = null;
+  let pollInterval = null;
+
+  async function initStudio() {
+    await checkOpcStatus();
+    await loadTagsData();
+
+    // Start 1-second continuous telemetry sync
+    if (!pollInterval) {
+      pollInterval = setInterval(pollLiveTagValues, 1000);
+    }
+  }
+
+  async function checkOpcStatus() {
+    try {
+      const res = await fetch('/api/opc/status', { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        if (opcServerEndpointText) {
+          opcServerEndpointText.textContent = `OPC UA Server: ${data.server_endpoint || 'opc.tcp://0.0.0.0:4841'}`;
+        }
+        if (footerMeta) {
+          footerMeta.innerHTML = `Endpoint: <code style="color: #38BDF8;">${data.server_endpoint || 'opc.tcp://0.0.0.0:4841'}</code> | Mode: <strong>${(data.opc_mode || 'SERVER').toUpperCase()}</strong> | Active Tags: <strong>${data.total_tags || 0}</strong>`;
+        }
+      }
+    } catch (e) {
+      console.warn("Could not fetch OPC status:", e);
+    }
+  }
+
+  async function loadTagsData() {
+    try {
+      const res = await fetch('/api/tags', { cache: 'no-store' });
+      if (res.ok) {
+        const payload = await res.json();
+        tagsData = Array.isArray(payload) ? payload : (payload.tags || []);
+        updateTagCounters();
+        renderTagTable();
+      }
+    } catch (e) {
+      console.warn("Could not load tag list:", e);
+    }
+  }
+
+  async function pollLiveTagValues() {
+    try {
+      const res = await fetch('/api/tags', { cache: 'no-store' });
+      if (!res.ok) return;
+      const payload = await res.json();
+      const incoming = Array.isArray(payload) ? payload : (payload.tags || []);
+      if (!incoming || incoming.length === 0) return;
+
+      if (incoming.length !== tagsData.length) {
+        tagsData = incoming;
+        updateTagCounters();
+        renderTagTable();
+        return;
+      }
+
+      incoming.forEach(inTag => {
+        const oldTag = tagsData.find(t => t.tag_id === inTag.tag_id);
+        if (oldTag) {
+          const rawVal = (inTag.live_value !== undefined && inTag.live_value !== null)
+            ? inTag.live_value
+            : ((inTag.value !== undefined && inTag.value !== null) ? inTag.value : inTag.default);
+          oldTag.live_value = inTag.live_value;
+          oldTag.value = inTag.value;
+
+          const el = document.getElementById(`live_tag_${inTag.tag_id}`);
+          if (el) {
+            const formatted = typeof rawVal === 'number'
+              ? (Math.abs(rawVal) > 100 ? rawVal.toFixed(1) : rawVal.toFixed(2))
+              : (rawVal ?? '-');
+            const formattedStr = String(formatted);
+            if (el.textContent !== formattedStr) {
+              el.textContent = formattedStr;
+              el.classList.add('val-updated');
+              setTimeout(() => el.classList.remove('val-updated'), 400);
+            }
+          }
+
+          if (inTag.category === 'setpoint' && inTag.source === 'local') {
+            const input = tagGridTableBody?.querySelector(`.sp-edit-input[data-tag="${inTag.tag_id}"]`);
+            if (input && document.activeElement !== input) {
+              const formatted = typeof rawVal === 'number'
+                ? (Math.abs(rawVal) > 100 ? rawVal.toFixed(1) : rawVal.toFixed(2))
+                : (rawVal ?? '');
+              if (input.value !== String(formatted)) {
+                input.value = formatted;
+              }
+            }
+          }
+        }
+      });
+    } catch (e) {
+      // quiet poll
+    }
+  }
+
+  function updateTagCounters() {
+    const total = tagsData.length;
+    const sps = tagsData.filter(t => t.category === 'setpoint').length;
+    const pvs = tagsData.filter(t => t.category === 'measurement').length;
+    const opcs = tagsData.filter(t => t.source === 'opc_ua').length;
+    const locals = tagsData.filter(t => t.source === 'local').length;
+
+    if (statTotalTags) statTotalTags.textContent = total;
+    if (statSetpoints) statSetpoints.textContent = sps;
+    if (statMeasurements) statMeasurements.textContent = pvs;
+    if (statOpcTags) statOpcTags.textContent = opcs;
+    if (statLocalTags) statLocalTags.textContent = locals;
+
+    if (cntFilterAll) cntFilterAll.textContent = total;
+    if (cntFilterSP) cntFilterSP.textContent = sps;
+    if (cntFilterPV) cntFilterPV.textContent = pvs;
+    if (cntFilterOpc) cntFilterOpc.textContent = opcs;
+    if (cntFilterLocal) cntFilterLocal.textContent = locals;
+  }
+
+  function renderTagTable() {
+    if (!tagGridTableBody) return;
+
+    const filtered = tagsData.filter(tag => {
+      // Category / Source filter
+      if (currentTagFilter === 'setpoint' && tag.category !== 'setpoint') return false;
+      if (currentTagFilter === 'measurement' && tag.category !== 'measurement') return false;
+      if (currentTagFilter === 'opc_ua' && tag.source !== 'opc_ua') return false;
+      if (currentTagFilter === 'local' && tag.source !== 'local') return false;
+
+      // Search term
+      if (tagSearchTerm) {
+        const q = tagSearchTerm.toLowerCase();
+        const mId = (tag.tag_id || '').toLowerCase().includes(q);
+        const mName = (tag.name || '').toLowerCase().includes(q);
+        const mHmi = (tag.hmi_tag || '').toLowerCase().includes(q);
+        const mNode = (tag.opc_node_id || tag.node_id || '').toLowerCase().includes(q);
+        if (!mId && !mName && !mHmi && !mNode) return false;
+      }
+      return true;
+    });
+
+    if (filtered.length === 0) {
+      tagGridTableBody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: var(--text-dim); padding: 36px; font-size: 13px;">No tags found matching current criteria.</td></tr>`;
+      return;
+    }
+
+    tagGridTableBody.innerHTML = filtered.map(tag => {
+      const isSP = tag.category === 'setpoint';
+      const isOpc = tag.source === 'opc_ua';
+      const isCustom = !!tag.custom;
+      const rawVal = (tag.live_value !== undefined && tag.live_value !== null)
+        ? tag.live_value
+        : ((tag.value !== undefined && tag.value !== null) ? tag.value : (tag.default ?? '-'));
+      const val = typeof rawVal === 'number'
+        ? (Math.abs(rawVal) > 100 ? rawVal.toFixed(1) : rawVal.toFixed(2))
+        : rawVal;
+
+      let valHtml = '';
+      const isBoolVal = typeof val === 'boolean' || tag.data_type === 'Boolean' || tag.data_type === 'bool';
+      if (isSP) {
+        if (!isOpc) {
+          if (isBoolVal) {
+            valHtml = `
+              <div class="sp-edit-box">
+                <select class="sp-edit-input" data-tag="${tag.tag_id}" style="width: 70px; padding: 2px 4px; font-size: 11px;">
+                  <option value="true" ${val === true || val === 'true' ? 'selected' : ''}>TRUE</option>
+                  <option value="false" ${val === false || val === 'false' ? 'selected' : ''}>FALSE</option>
+                </select>
+                <button class="btn-apply-sp" data-tag="${tag.tag_id}" title="Apply Local Setpoint">✓</button>
+              </div>
+            `;
+          } else {
+            valHtml = `
+              <div class="sp-edit-box">
+                <input type="number" step="any" class="sp-edit-input" data-tag="${tag.tag_id}" value="${val}" />
+                <button class="btn-apply-sp" data-tag="${tag.tag_id}" title="Apply Local Setpoint">✓</button>
+              </div>
+            `;
+          }
+        } else {
+          valHtml = `
+            <span class="live-val-badge opc-driven" id="live_tag_${tag.tag_id}">${val}</span>
+            <span style="font-size: 8px; color: #6EE7B7; border: 1px solid rgba(16,185,129,0.3); padding: 1px 3px; border-radius: 3px; font-weight: 700; margin-left: 4px;">OPC</span>
+          `;
+        }
+      } else {
+        valHtml = `<span class="live-val-badge" id="live_tag_${tag.tag_id}">${val}</span>`;
+      }
+
+      const rangeText = (tag.min !== undefined && tag.max !== undefined) ? `[${tag.min}, ${tag.max}]` : '-';
+
+      return `
+        <tr data-tag-row="${tag.tag_id}">
+          <td>
+            <div class="tag-id-box">
+              <strong>${tag.tag_id}</strong>
+              <span class="tag-name-desc">${tag.name || ''}</span>
+            </div>
+          </td>
+          <td><code style="color: #F8FAFC; font-family: var(--font-mono); font-size: 11px;">${tag.hmi_tag || '-'}</code></td>
+          <td>
+            <span class="${isSP ? 'badge-cat-sp' : 'badge-cat-pv'}">${isSP ? '🎯 Setpoint' : '📊 Measurement'}</span>
+          </td>
+          <td>
+            <button class="source-btn-toggle ${isOpc ? 'source-opc' : 'source-local'}" data-tag="${tag.tag_id}" data-current="${tag.source}" title="Click to toggle between Local and OPC UA control">
+              ${isOpc ? '⚡ OPC UA' : '💻 Local'}
+            </button>
+          </td>
+          <td>${valHtml}</td>
+          <td><span style="color: var(--text-muted); font-size: 11px;">${tag.unit || ''}</span></td>
+          <td><span class="node-code" title="${tag.opc_node_id || tag.node_id || ''}">${tag.opc_node_id || tag.node_id || '-'}</span></td>
+          <td>
+            <span class="direction-badge ${tag.opc_direction === 'write' || tag.access === 'RW' ? 'write' : 'read'}">
+              ${tag.opc_direction === 'write' || tag.access === 'RW' ? 'WRITE (SP)' : 'READ (PV)'}
+            </span>
+          </td>
+          <td style="color: var(--text-dim); font-family: var(--font-mono); font-size: 10px;">${rangeText}</td>
+          <td>
+            <div style="display: flex; gap: 4px;">
+              <button class="tbl-action-btn btn-edit-tag" data-tag="${tag.tag_id}" title="Edit Tag Properties">✎</button>
+              ${isCustom ? `<button class="tbl-action-btn btn-del-tag" data-tag="${tag.tag_id}" title="Delete Custom Tag">🗑</button>` : ''}
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    // Attach row events
+    tagGridTableBody.querySelectorAll('.source-btn-toggle').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const tagId = btn.getAttribute('data-tag');
+        const curr = btn.getAttribute('data-current');
+        const newSrc = curr === 'local' ? 'opc_ua' : 'local';
+        await toggleTagSource(tagId, newSrc);
+      });
+    });
+
+    tagGridTableBody.querySelectorAll('.btn-apply-sp').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tagId = btn.getAttribute('data-tag');
+        const input = tagGridTableBody.querySelector(`.sp-edit-input[data-tag="${tagId}"]`);
+        if (input) applyLocalSetpoint(tagId, input.value);
+      });
+    });
+
+    tagGridTableBody.querySelectorAll('.sp-edit-input').forEach(input => {
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          const tagId = input.getAttribute('data-tag');
+          applyLocalSetpoint(tagId, input.value);
+        }
+      });
+    });
+
+    tagGridTableBody.querySelectorAll('.btn-edit-tag').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tagId = btn.getAttribute('data-tag');
+        const tagObj = tagsData.find(t => t.tag_id === tagId);
+        if (tagObj) openTagModal(tagObj);
+      });
+    });
+
+    tagGridTableBody.querySelectorAll('.btn-del-tag').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const tagId = btn.getAttribute('data-tag');
+        if (confirm(`Are you sure you want to delete custom tag "${tagId}"?`)) {
+          await deleteTag(tagId);
+        }
+      });
+    });
+  }
+
+  async function toggleTagSource(tagId, newSource) {
+    try {
+      const res = await fetch('/api/tags/toggle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tag_id: tagId, source: newSource })
+      });
+      if (res.ok) {
+        const tag = tagsData.find(t => t.tag_id === tagId);
+        if (tag) tag.source = newSource;
+        updateTagCounters();
+        renderTagTable();
+      }
+    } catch (e) {
+      console.error("Failed to toggle tag source:", e);
+    }
+  }
+
+  async function applyLocalSetpoint(tagId, valStr) {
+    const val = parseFloat(valStr);
+    if (isNaN(val)) return;
+    try {
+      const res = await fetch('/api/tags/value', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tag_id: tagId, value: val })
+      });
+      if (res.ok) {
+        const tag = tagsData.find(t => t.tag_id === tagId);
+        if (tag) {
+          tag.live_value = val;
+          tag.value = val;
+        }
+        const input = tagGridTableBody.querySelector(`.sp-edit-input[data-tag="${tagId}"]`);
+        if (input) {
+          input.style.borderColor = '#00E676';
+          input.style.boxShadow = '0 0 8px rgba(0, 230, 118, 0.5)';
+          setTimeout(() => {
+            input.style.borderColor = '';
+            input.style.boxShadow = '';
+          }, 800);
+        }
+      }
+    } catch (e) {
+      console.error("Failed to set tag value:", e);
+    }
+  }
+
+  async function setAllTagsSource(targetSource) {
+    for (const tag of tagsData) {
+      if (tag.category === 'setpoint' && tag.source !== targetSource) {
+        await toggleTagSource(tag.tag_id, targetSource);
+      }
+    }
+  }
+
+  async function testOpcServer() {
+    if (!opcTestBanner) return;
+    opcTestBanner.style.display = 'flex';
+    opcTestBanner.className = 'opc-test-banner info';
+    if (opcTestBannerIcon) opcTestBannerIcon.textContent = '⏳';
+    if (opcTestBannerText) opcTestBannerText.textContent = 'Pinging OPC UA Server endpoint...';
+
+    try {
+      const res = await fetch('/api/opc/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const data = await res.json();
+      if (data.status === 'ok' || data.status === 'success') {
+        opcTestBanner.className = 'opc-test-banner success';
+        if (opcTestBannerIcon) opcTestBannerIcon.textContent = '✓';
+        if (opcTestBannerText) {
+          opcTestBannerText.textContent = `OPC UA Server Online! Endpoint: ${data.endpoint} | Latency: ${data.latency_ms} ms | Registered Nodes: ${data.nodes_count}`;
+        }
+      } else {
+        opcTestBanner.className = 'opc-test-banner error';
+        if (opcTestBannerIcon) opcTestBannerIcon.textContent = '⚠';
+        if (opcTestBannerText) opcTestBannerText.textContent = `OPC UA Test Failed: ${data.message || 'Server unresponsive'}`;
+      }
+    } catch (e) {
+      opcTestBanner.className = 'opc-test-banner error';
+      if (opcTestBannerIcon) opcTestBannerIcon.textContent = '⚠';
+      if (opcTestBannerText) opcTestBannerText.textContent = `Error reaching simulator backend: ${e.message}`;
+    }
+  }
+
+  function exportTagsCsv() {
+    if (!tagsData || tagsData.length === 0) return;
+    const headers = ['Tag_ID', 'Name', 'HMI_Tag', 'Category', 'Control_Source', 'Live_Value', 'Unit', 'OPC_Node_ID', 'Direction', 'Min', 'Max'];
+    const rows = tagsData.map(t => {
+      const val = (t.live_value !== undefined && t.live_value !== null) ? t.live_value : (t.value !== undefined ? t.value : t.default);
+      return [
+        `"${t.tag_id || ''}"`,
+        `"${t.name || ''}"`,
+        `"${t.hmi_tag || ''}"`,
+        `"${t.category || ''}"`,
+        `"${t.source || ''}"`,
+        `"${val ?? ''}"`,
+        `"${t.unit || ''}"`,
+        `"${t.opc_node_id || t.node_id || ''}"`,
+        `"${t.opc_direction || t.access || ''}"`,
+        `"${t.min ?? ''}"`,
+        `"${t.max ?? ''}"`
+      ].join(',');
+    });
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `prosim_opc_tags_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  function exportTagsJson() {
+    if (!tagsData || tagsData.length === 0) return;
+    const blob = new Blob([JSON.stringify(tagsData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `prosim_opc_tags_${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function openTagModal(tagObj = null) {
+    editingTagId = tagObj ? tagObj.tag_id : null;
+    if (customTagModalTitle) {
+      customTagModalTitle.textContent = tagObj ? `✎ Edit Process Tag (${tagObj.tag_id})` : '➕ Add Custom Process Tag';
+    }
+    if (customTagStatusMsg) customTagStatusMsg.textContent = '';
+
+    if (tagObj) {
+      tagEditId.value = tagObj.tag_id || '';
+      tagEditId.disabled = true;
+      tagEditName.value = tagObj.name || '';
+      tagEditHmi.value = tagObj.hmi_tag || '';
+      tagEditCategory.value = tagObj.category || 'setpoint';
+      tagEditSource.value = tagObj.source || 'opc_ua';
+      tagEditNodeId.value = tagObj.opc_node_id || tagObj.node_id || '';
+      tagEditDirection.value = tagObj.opc_direction || (tagObj.category === 'setpoint' ? 'write' : 'read');
+      tagEditUnit.value = tagObj.unit || '';
+      tagEditMin.value = tagObj.min ?? '';
+      tagEditMax.value = tagObj.max ?? '';
+      tagEditDef.value = tagObj.default ?? '';
+    } else {
+      tagEditId.value = '';
+      tagEditId.disabled = false;
+      tagEditName.value = '';
+      tagEditHmi.value = '';
+      tagEditCategory.value = 'setpoint';
+      tagEditSource.value = 'opc_ua';
+      tagEditNodeId.value = 'ns=2;s=Kiln3.Setpoints.';
+      tagEditDirection.value = 'write';
+      tagEditUnit.value = '';
+      tagEditMin.value = '';
+      tagEditMax.value = '';
+      tagEditDef.value = '';
+    }
+
+    if (customTagModal) customTagModal.classList.add('open');
+  }
+
+  async function saveTagModal() {
+    const tagId = tagEditId.value.trim();
+    if (!tagId) {
+      if (customTagStatusMsg) {
+        customTagStatusMsg.textContent = 'Please enter a valid tag ID.';
+        customTagStatusMsg.className = 'cfg-status-message error';
+      }
+      return;
+    }
+
+    const payload = {
+      tag_id: tagId,
+      name: tagEditName.value.trim(),
+      hmi_tag: tagEditHmi.value.trim(),
+      category: tagEditCategory.value,
+      source: tagEditSource.value,
+      opc_node_id: tagEditNodeId.value.trim(),
+      opc_direction: tagEditDirection.value,
+      unit: tagEditUnit.value.trim(),
+      min: tagEditMin.value !== '' ? parseFloat(tagEditMin.value) : undefined,
+      max: tagEditMax.value !== '' ? parseFloat(tagEditMax.value) : undefined,
+      default: tagEditDef.value !== '' ? parseFloat(tagEditDef.value) : undefined,
+      custom: true
+    };
+
+    try {
+      const res = await fetch('/api/tags/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (res.ok && (data.status === 'ok' || data.status === 'success')) {
+        if (customTagStatusMsg) {
+          customTagStatusMsg.textContent = '✓ Tag saved successfully!';
+          customTagStatusMsg.className = 'cfg-status-message success';
+        }
+        await loadTagsData();
+        setTimeout(() => {
+          if (customTagModal) customTagModal.classList.remove('open');
+        }, 600);
+      } else {
+        if (customTagStatusMsg) {
+          customTagStatusMsg.textContent = `Error: ${data.message || 'Failed to save tag'}`;
+          customTagStatusMsg.className = 'cfg-status-message error';
+        }
+      }
+    } catch (e) {
+      if (customTagStatusMsg) {
+        customTagStatusMsg.textContent = `Network error: ${e.message}`;
+        customTagStatusMsg.className = 'cfg-status-message error';
+      }
+    }
+  }
+
+  async function deleteTag(tagId) {
+    try {
+      const res = await fetch('/api/tags/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tag_id: tagId })
+      });
+      if (res.ok) {
+        await loadTagsData();
+      }
+    } catch (e) {
+      console.error("Failed to delete tag:", e);
+    }
+  }
+
+  // Event wiring
+  if (tagSearchInput) {
+    tagSearchInput.addEventListener('input', (e) => {
+      tagSearchTerm = e.target.value.trim();
+      renderTagTable();
+    });
+  }
+
+  if (btnClearSearch) {
+    btnClearSearch.addEventListener('click', () => {
+      if (tagSearchInput) tagSearchInput.value = '';
+      tagSearchTerm = '';
+      renderTagTable();
+    });
+  }
+
+  document.querySelectorAll('.filter-pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+      currentTagFilter = pill.getAttribute('data-filter') || 'all';
+      renderTagTable();
+    });
+  });
+
+  if (btnTestOpc) btnTestOpc.addEventListener('click', testOpcServer);
+  if (btnCloseTestBanner && opcTestBanner) {
+    btnCloseTestBanner.addEventListener('click', () => {
+      opcTestBanner.style.display = 'none';
+    });
+  }
+
+  if (btnSetAllLocal) btnSetAllLocal.addEventListener('click', () => setAllTagsSource('local'));
+  if (btnSetAllOpc) btnSetAllOpc.addEventListener('click', () => setAllTagsSource('opc_ua'));
+  if (btnOpenAddTag) btnOpenAddTag.addEventListener('click', () => openTagModal(null));
+  if (btnExportCsv) btnExportCsv.addEventListener('click', exportTagsCsv);
+  if (btnExportJson) btnExportJson.addEventListener('click', exportTagsJson);
+
+  if (btnCloseCustomTagModal) {
+    btnCloseCustomTagModal.addEventListener('click', () => {
+      if (customTagModal) customTagModal.classList.remove('open');
+    });
+  }
+  if (btnCancelCustomTag) {
+    btnCancelCustomTag.addEventListener('click', () => {
+      if (customTagModal) customTagModal.classList.remove('open');
+    });
+  }
+  if (btnSaveCustomTag) {
+    btnSaveCustomTag.addEventListener('click', saveTagModal);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initStudio);
+  } else {
+    initStudio();
+  }
+})();

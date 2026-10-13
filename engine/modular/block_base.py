@@ -209,32 +209,46 @@ class BlockBase(ABC):
 
     def get_opc_tags(self) -> List[Dict[str, Any]]:
         """
-        Auto-generates tag metadata for OPC UA node registration.
+        Auto-generates tag metadata for OPC UA node registration and Tag Studio.
         """
         tags = []
         for state_key, val in self.state.items():
             if isinstance(val, (int, float, bool)):
+                num_val = round(val, 2) if isinstance(val, float) else val
                 tags.append({
                     "tag_id": f"{self.block_id}_{state_key.upper()}",
                     "node_id": f"ns=2;s={self.block_id}_{state_key.upper()}",
+                    "opc_node_id": f"ns=2;s={self.block_id}_{state_key.upper()}",
                     "name": f"{self.name} {state_key.replace('_', ' ').title()}",
-                    "category": self.category,
+                    "category": "measurement",
+                    "equipment_category": self.category,
                     "unit": "",
-                    "value": val,
+                    "value": num_val,
+                    "live_value": num_val,
                     "access": "RO",
+                    "opc_direction": "read",
                     "source": "opc_ua",
+                    "hmi_tag": f"{self.block_id}.{state_key}",
+                    "status": "RUNNING",
                 })
         for param_key, val in self.parameters.items():
             if isinstance(val, (int, float)):
+                num_val = round(val, 2) if isinstance(val, float) else val
                 tags.append({
                     "tag_id": f"{self.block_id}_SP_{param_key.upper()}",
                     "node_id": f"ns=2;s={self.block_id}_SP_{param_key.upper()}",
+                    "opc_node_id": f"ns=2;s={self.block_id}_SP_{param_key.upper()}",
                     "name": f"{self.name} Setpoint {param_key.replace('_', ' ').title()}",
-                    "category": self.category,
+                    "category": "setpoint",
+                    "equipment_category": self.category,
                     "unit": self.parameter_schema.get(param_key, {}).get("unit", ""),
-                    "value": val,
+                    "value": num_val,
+                    "live_value": num_val,
                     "access": "RW",
+                    "opc_direction": "write",
                     "source": "opc_ua",
+                    "hmi_tag": f"{self.block_id}.SP_{param_key}",
+                    "status": "OPC_BOUND",
                 })
         return tags
 
