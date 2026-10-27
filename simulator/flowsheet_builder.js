@@ -945,8 +945,7 @@
   }
 
   function getBlockDimensions(block) {
-    // Custom sizing per equipment
-    if (block.type === 'RotaryKiln') return { width: 170, height: 95 };
+    if (block.type === 'RotaryKiln') return { width: 185, height: 95 };
     if (block.type === 'GrateCooler') return { width: 155, height: 90 };
     if (block.type === 'CalcinerReactor') return { width: 145, height: 95 };
     if (block.type === 'CycloneStage') return { width: 135, height: 85 };
@@ -1121,6 +1120,10 @@
     if (block.type === 'RotaryKiln') {
       const bz = block.state.burning_zone_temp_c || 1435.0;
       const clk = block.state.clinker_rate_tph || 175.0;
+      const amps = block.state.kiln_drive_current_a;
+      if (amps !== undefined) {
+        return `BZ ${bz.toFixed(0)}°C | ${clk.toFixed(1)} t/h | ${amps.toFixed(0)}A`;
+      }
       return `BZ ${bz.toFixed(0)}°C | ${clk.toFixed(1)} t/h`;
     }
     if (block.type === 'GrateCooler') {

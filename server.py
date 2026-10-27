@@ -13,6 +13,8 @@ import logging
 import os
 import sys
 import threading
+import time
+import webbrowser
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse
 
@@ -48,18 +50,18 @@ def sync_modular_telemetry_to_engine(modular_mgr, eng):
             return
         blocks = modular_mgr.active_graph.blocks
         # 1. Feed rate
-        feed_b = blocks.get("FEED_01")
+        feed_b = blocks.get("FEED_01") or blocks.get("FEED_STONE") or next((b for b in blocks.values() if getattr(b, "block_type", "") in ("GravimetricFeeder", "Feeder")), None)
         if feed_b:
             feed_rate = feed_b.state.get("actual_feed_rate_tph") or feed_b.parameters.get("nominal_rate_tph")
             if feed_rate is not None:
                 eng.feed_rate = float(feed_rate)
-        # 2. Kiln
-        kiln_b = blocks.get("KILN_01")
+        # 2. Kiln (supports cement KILN_01, lime LIME_KILN, or any RotaryKiln block)
+        kiln_b = blocks.get("KILN_01") or blocks.get("LIME_KILN") or next((b for b in blocks.values() if getattr(b, "block_type", "") == "RotaryKiln"), None)
         if kiln_b:
             bz_temp = kiln_b.state.get("burning_zone_temp_c")
             if bz_temp is not None:
                 eng.sintering_temp = float(bz_temp)
-            free_lime = kiln_b.state.get("free_lime_pct")
+            free_lime = kiln_b.state.get("free_lime_pct") or kiln_b.state.get("residual_caco3_pct")
             if free_lime is not None:
                 eng.free_lime = float(free_lime)
             clinker_rate = kiln_b.state.get("clinker_rate_tph")
@@ -68,6 +70,15 @@ def sync_modular_telemetry_to_engine(modular_mgr, eng):
             torque = kiln_b.state.get("kiln_drive_torque_kwn")
             if torque is not None:
                 eng.kiln_drive_torque = float(torque)
+            current_a = kiln_b.state.get("kiln_drive_current_a")
+            if current_a is not None:
+                eng.kiln_amps = float(current_a)
+            filling = kiln_b.state.get("bed_filling_degree_pct")
+            if filling is not None:
+                eng.filling_degree = float(filling)
+            spd = kiln_b.parameters.get("speed_rpm")
+            if spd is not None:
+                eng.kiln_speed = float(spd)
             kln_o2 = kiln_b.state.get("kiln_inlet_o2_pct")
             if kln_o2 is not None:
                 eng.kiln_inlet_o2 = float(kln_o2)
@@ -820,6 +831,19 @@ async def main():
     # 1. Start HTTP Server in Background Thread
     http_thread = threading.Thread(target=run_http_server, args=(args.http_port,), daemon=True)
     http_thread.start()
+
+    # Automatically launch default browser to Web HMI
+    def open_browser():
+        time.sleep(1.2)
+        url = f"http://localhost:{args.http_port}/index.html"
+        logger.info(f"Opening browser at {url}...")
+        try:
+            webbrowser.open(url)
+        except Exception as e:
+            logger.warning(f"Failed to automatically open browser: {e}")
+
+    threading.Thread(target=open_browser, daemon=True).start()
+
 
     # 2. Run selected mode
     if mode == "client":

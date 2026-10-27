@@ -431,6 +431,78 @@ class TestModularEngine(unittest.TestCase):
         self.assertFalse(any("FEED_01" in nid for nid in node_ids_after))
         self.assertTrue(any("CUSTOM_FEEDER_99" in nid for nid in node_ids_after))
 
+    def test_14_kiln_speed_process_coupling(self):
+        """Verify that rotary kiln speed couples to residence time, bed filling, drive current, temperatures, and calcination quality."""
+        # 1. Baseline Lime Kiln at nominal speed 2.2 rpm
+        kiln_base = RotaryKiln(
+            block_id="LIME_KILN_SPEED_TEST",
+            parameters={"length_m": 55.0, "diameter_m": 3.8, "speed_rpm": 2.2, "target_burning_zone_c": 1280.0}
+        )
+        kiln_base.initialize()
+        feed = ProcessStream(stream_id=1, name="Limestone", phase=StreamPhase.SOLID, mass_flow_tph=100.0, composition={"CaCO3_pct": 94.5, "SiO2_pct": 2.2})
+        fuel = ProcessStream(stream_id=2, name="Gas", phase=StreamPhase.FUEL, mass_flow_tph=5.2, composition={"lhv_mj_kg": 46.5})
+        air = ProcessStream(stream_id=3, name="Air", phase=StreamPhase.AIR, mass_flow_tph=90.0, temperature_c=650.0)
+        out_solid_base = ProcessStream(stream_id=4, name="Lime", phase=StreamPhase.SOLID)
+        out_gas_base = ProcessStream(stream_id=5, name="Gas", phase=StreamPhase.GAS)
+
+        kiln_base.evaluate_steady_state(
+            {"in_meal_calcined": feed, "in_flame_fuel": fuel, "in_secondary_air": air},
+            {"out_clinker": out_solid_base, "out_kiln_gas": out_gas_base}
+        )
+        res_base = kiln_base.state["bed_residence_time_min"]
+        fill_base = kiln_base.state["bed_filling_degree_pct"]
+        current_base = kiln_base.state["kiln_drive_current_a"]
+        temp_base = kiln_base.state["burning_zone_temp_c"]
+        caco3_base = kiln_base.state["residual_caco3_pct"]
+
+        # 2. High Speed Lime Kiln: 3.0 rpm (+36%)
+        kiln_fast = RotaryKiln(
+            block_id="LIME_KILN_SPEED_TEST_FAST",
+            parameters={"length_m": 55.0, "diameter_m": 3.8, "speed_rpm": 3.0, "target_burning_zone_c": 1280.0}
+        )
+        kiln_fast.initialize()
+        out_solid_fast = ProcessStream(stream_id=4, name="Lime", phase=StreamPhase.SOLID)
+        out_gas_fast = ProcessStream(stream_id=5, name="Gas", phase=StreamPhase.GAS)
+        kiln_fast.evaluate_steady_state(
+            {"in_meal_calcined": feed, "in_flame_fuel": fuel, "in_secondary_air": air},
+            {"out_clinker": out_solid_fast, "out_kiln_gas": out_gas_fast}
+        )
+        res_fast = kiln_fast.state["bed_residence_time_min"]
+        fill_fast = kiln_fast.state["bed_filling_degree_pct"]
+        current_fast = kiln_fast.state["kiln_drive_current_a"]
+        temp_fast = kiln_fast.state["burning_zone_temp_c"]
+        caco3_fast = kiln_fast.state["residual_caco3_pct"]
+
+        # Physics validations:
+        # A. Residence time decreases with speed
+        self.assertLess(res_fast, res_base)
+        # B. Bed filling degree decreases (bed layer thins out)
+        self.assertLess(fill_fast, fill_base)
+        # C. Motor drive current increases (higher motor power demand)
+        self.assertGreater(current_fast, current_base)
+        # D. Burning zone temperature drops due to material advance cooling
+        self.assertLess(temp_fast, temp_base)
+        # E. Residual uncalcined CaCO3 increases (shorter residence time = undercalcination)
+        self.assertGreater(caco3_fast, caco3_base)
+
+        # 3. Dynamic Step: speed surge transient validation
+        kiln_dyn = RotaryKiln(
+            block_id="LIME_KILN_DYN",
+            parameters={"length_m": 55.0, "diameter_m": 3.8, "speed_rpm": 2.2, "target_burning_zone_c": 1280.0}
+        )
+        kiln_dyn.initialize()
+        out_solid_dyn = ProcessStream(stream_id=4, name="Lime", phase=StreamPhase.SOLID)
+        out_gas_dyn = ProcessStream(stream_id=5, name="Gas", phase=StreamPhase.GAS)
+        kiln_dyn.evaluate_steady_state(
+            {"in_meal_calcined": feed, "in_flame_fuel": fuel, "in_secondary_air": air},
+            {"out_clinker": out_solid_dyn, "out_kiln_gas": out_gas_dyn}
+        )
+        clk_ss = kiln_dyn.state["clinker_rate_tph"]
+        # Step increase speed: transient discharge flow surges
+        kiln_dyn.parameters["speed_rpm"] = 3.2
+        kiln_dyn.step(1.0, {"in_meal_calcined": feed, "in_flame_fuel": fuel, "in_secondary_air": air}, {"out_clinker": out_solid_dyn, "out_kiln_gas": out_gas_dyn})
+        self.assertGreater(kiln_dyn.state["clinker_rate_tph"], clk_ss)
+
 
 if __name__ == "__main__":
     unittest.main()
