@@ -119,13 +119,18 @@ class CalcinerReactor(BlockBase):
 
         q_loss_gjh = loss_pct * (q_fuel_gjh + 350.0)
 
-        # 5. Excess air & Gas Analysis (O2, CO)
+        # 5. Excess air & Coupled Combustion Gas Analysis (O2, CO)
         in_gas_o2 = in_gas.composition.get("O2_pct", 2.32) if in_gas and in_gas.composition else 2.32
         m_o2_in = (m_ta * 0.232) + (m_gas * (in_gas_o2 / 100.0) * (32.0 / 28.9))
         m_o2_stoich = m_fuel * 2.45
         excess_o2 = m_o2_in - m_o2_stoich
-        calc_o2 = max(0.8, min(7.5, (excess_o2 / max(1.0, m_gas_out)) * 100.0 * (28.9 / 32.0))) if m_gas_out > 0 else 2.80
-        calc_co = max(0.02, min(3.50, 0.05 + max(0.0, 2.2 - calc_o2) * 0.35))
+        lambda_calc = m_o2_in / max(0.1, m_o2_stoich) if m_fuel > 0.1 else 1.20
+        if lambda_calc >= 1.0:
+            calc_o2 = max(0.2, min(8.0, (excess_o2 / max(1.0, m_gas_out)) * 100.0 * (28.9 / 32.0))) if m_gas_out > 0 else 2.80
+            calc_co = max(0.005, min(1.50, 0.015 + 0.12 * max(0.0, 1.2 - calc_o2) ** 2))
+        else:
+            calc_o2 = max(0.05, 0.2 * lambda_calc)
+            calc_co = min(5.0, 0.05 + (1.0 - lambda_calc) * 4.0)
 
         # Update block state
         self.state["calciner_temp_c"] = round(t_calc_target, 1)

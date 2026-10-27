@@ -119,7 +119,8 @@ class FlowsheetSolver:
                 history.setdefault(sid, {})["mass"] = (x_curr, fx_curr)
                 s.update_state(mass_flow_tph=max(0.0, new_x))
 
-            if max_residual < self.tolerance:
+            min_iters = min(6, len(tear_stream_ids)) if tear_stream_ids else 1
+            if max_residual < self.tolerance and iteration >= min_iters:
                 converged = True
                 break
 

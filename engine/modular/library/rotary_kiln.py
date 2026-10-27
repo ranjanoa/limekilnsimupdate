@@ -54,8 +54,9 @@ class RotaryKiln(BlockBase):
         holdup_nom = clk_nom * (residence_min / 60.0)
         v_shell = math.pi * ((d / 2.0) ** 2) * l
         v_bed = holdup_nom / 1.35
-        filling_pct = (v_bed / max(1.0, v_shell)) * 100.0
-        phi_ref = 9.5
+        dam_holdback = 2.6 if is_lime else 3.2
+        filling_pct = ((v_bed * dam_holdback) / max(1.0, v_shell)) * 100.0
+        phi_ref = 8.5 if is_lime else 10.96
         filling_ratio = max(0.2, min(3.0, filling_pct / phi_ref))
         n_ref = 2.2 if is_lime else 3.79
         speed_ratio = speed / n_ref
@@ -141,8 +142,9 @@ class RotaryKiln(BlockBase):
         m_holdup = max(1.0, m_clinker * (residence_min / 60.0))
         rho_bulk = 1.35  # bulk density of mineral bed (t/m3)
         v_bed = m_holdup / rho_bulk
-        filling_pct = (v_bed / max(1.0, v_shell)) * 100.0
-        phi_ref = 9.5  # nominal filling degree (%)
+        dam_holdback = 2.6 if is_lime_kiln else 3.2
+        filling_pct = ((v_bed * dam_holdback) / max(1.0, v_shell)) * 100.0
+        phi_ref = 8.5 if is_lime_kiln else 10.96  # nominal filling degree (%)
         filling_ratio = max(0.2, min(3.0, filling_pct / phi_ref))
         speed_ratio = n / n_ref
 
@@ -329,8 +331,10 @@ class RotaryKiln(BlockBase):
         d = float(self.parameters.get("diameter_m", 4.6))
         v_shell = math.pi * ((d / 2.0) ** 2) * l
         v_bed = new_holdup / 1.35
-        dyn_filling_pct = (v_bed / max(1.0, v_shell)) * 100.0
-        dyn_filling_ratio = max(0.2, min(3.0, dyn_filling_pct / 9.5))
+        dam_holdback = 2.6 if in_caco3_pct > 70.0 else 3.2
+        dyn_filling_pct = ((v_bed * dam_holdback) / max(1.0, v_shell)) * 100.0
+        phi_ref = 8.5 if in_caco3_pct > 70.0 else 10.96
+        dyn_filling_ratio = max(0.2, min(3.0, dyn_filling_pct / phi_ref))
 
         i_nom = 185.0 if in_caco3_pct > 70.0 else 254.0
         t_nom = 145.0 if in_caco3_pct > 70.0 else 182.0
