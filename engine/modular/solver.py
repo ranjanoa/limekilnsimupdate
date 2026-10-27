@@ -126,6 +126,23 @@ class FlowsheetSolver:
         # Final audit of plant mass and heat balances
         audit = self.graph.audit_plant_conservation()
 
+        # Synchronize dynamic tracking states to converged steady-state baseline
+        if converged:
+            for b_id, block in self.graph.blocks.items():
+                if block.block_type == "RotaryKiln":
+                    block.state["dynamic_clinker_tph"] = float(block.state.get("clinker_rate_tph", 175.0))
+                    block.state["dynamic_holdup_tons"] = float(block.state.get("bed_holdup_tons", 85.0))
+                    block.state["dynamic_bz_temp_c"] = float(block.state.get("burning_zone_temp_c", 1435.0))
+                elif block.block_type == "CalcinerReactor":
+                    block.state["dynamic_temp_c"] = float(block.state.get("calciner_temp_c", 885.0))
+                    block.state["dynamic_alpha_pct"] = float(block.state.get("calcination_degree_pct", 92.5))
+                elif block.block_type == "CyclonePreheater":
+                    block.state["dynamic_gas_temp_c"] = float(block.state.get("gas_temp_c", 450.0))
+                    block.state["dynamic_meal_temp_c"] = float(block.state.get("meal_temp_c", 650.0))
+                elif block.block_type == "GrateCooler":
+                    block.state["dynamic_sec_temp_c"] = float(block.state.get("secondary_air_temp_c", 750.0))
+                    block.state["dynamic_tert_temp_c"] = float(block.state.get("tertiary_air_temp_c", 850.0))
+
         return {
             "converged": converged,
             "iterations": iteration,

@@ -42,17 +42,41 @@ class RotaryKiln(BlockBase):
 
     def initialize(self):
         bz_temp = float(self.parameters.get("target_burning_zone_c", 1435.0))
-        speed = float(self.parameters.get("speed_rpm", 3.79))
+        speed = max(0.1, float(self.parameters.get("speed_rpm", 3.79)))
+        l = float(self.parameters.get("length_m", 72.0))
+        d = float(self.parameters.get("diameter_m", 4.6))
+        s = float(self.parameters.get("slope_pct", 3.5)) / 100.0
+        theta = 35.0
+        residence_min = (1.77 * l * math.sqrt(theta)) / (s * d * speed * 60.0)
+
+        is_lime = bz_temp < 1350.0 or speed < 2.5
+        clk_nom = 58.5 if is_lime else 175.0
+        holdup_nom = clk_nom * (residence_min / 60.0)
+        v_shell = math.pi * ((d / 2.0) ** 2) * l
+        v_bed = holdup_nom / 1.35
+        filling_pct = (v_bed / max(1.0, v_shell)) * 100.0
+        phi_ref = 9.5
+        filling_ratio = max(0.2, min(3.0, filling_pct / phi_ref))
+        n_ref = 2.2 if is_lime else 3.79
+        speed_ratio = speed / n_ref
+
+        t_torque_nom = 145.0 if is_lime else 182.0
+        i_nom = 185.0 if is_lime else 254.0
+        torque_kwn = t_torque_nom * (0.30 + 0.70 * filling_ratio)
+        omega = 2.0 * math.pi * speed / 60.0
+        power_kw = torque_kwn * omega
+        motor_current_a = i_nom * (0.20 + 0.45 * speed_ratio + 0.35 * filling_ratio)
+
         self.state = {
             "burning_zone_temp_c": bz_temp,
             "kiln_inlet_gas_temp_c": 1050.0,
-            "bed_residence_time_min": 28.5,
-            "bed_filling_degree_pct": 9.5,
-            "bed_holdup_tons": 85.0,
-            "kiln_drive_torque_kwn": 182.0,
-            "kiln_drive_current_a": 254.0,
-            "kiln_drive_power_kw": 72.2,
-            "clinker_rate_tph": 175.0,
+            "bed_residence_time_min": round(residence_min, 1),
+            "bed_filling_degree_pct": round(filling_pct, 2),
+            "bed_holdup_tons": round(holdup_nom, 1),
+            "kiln_drive_torque_kwn": round(torque_kwn, 1),
+            "kiln_drive_current_a": round(motor_current_a, 1),
+            "kiln_drive_power_kw": round(power_kw, 1),
+            "clinker_rate_tph": round(clk_nom, 2),
             "free_lime_pct": 1.15,
             "c3s_pct": 62.4,
             "residual_caco3_pct": 1.1,
@@ -62,10 +86,10 @@ class RotaryKiln(BlockBase):
             "kiln_inlet_co_pct": 0.04,
             "kiln_inlet_nox_ppm": 850.0,
             "heat_loss_gjh": round(float(self.parameters.get("shell_heat_loss_mw", 14.8)) * 3.6, 2),
-            # Internal dynamic states
+            # Internal dynamic states (exact unrounded floats)
             "dynamic_bz_temp_c": bz_temp,
-            "dynamic_clinker_tph": 175.0,
-            "dynamic_holdup_tons": 85.0,
+            "dynamic_clinker_tph": clk_nom,
+            "dynamic_holdup_tons": holdup_nom,
         }
 
     def evaluate_steady_state(
@@ -101,27 +125,7 @@ class RotaryKiln(BlockBase):
         i_nom = 185.0 if is_lime_kiln else 254.0
         t_torque_nom = 145.0 if is_lime_kiln else 182.0
 
-        # 2. Bed Material Holdup & Volumetric Filling Degree
-        # Internal shell volume: V = pi * (D/2)^2 * L
-        v_shell = math.pi * ((d / 2.0) ** 2) * l
-        m_holdup = max(1.0, m_meal * (residence_min / 60.0))
-        rho_bulk = 1.35  # bulk density of mineral bed (t/m3)
-        v_bed = m_holdup / rho_bulk
-        filling_pct = (v_bed / max(1.0, v_shell)) * 100.0
-        phi_ref = 9.5  # nominal filling degree (%)
-        filling_ratio = max(0.2, min(3.0, filling_pct / phi_ref))
-        speed_ratio = n / n_ref
-
-        # 3. Kiln Drive Torque, Mechanical Power, and Motor Current
-        # Mechanical torque: 30% mechanical/roller friction + 70% bed lifting torque
-        torque_kwn = t_torque_nom * (0.30 + 0.70 * filling_ratio)
-        # Mechanical power: P = T * omega = T * (2*pi*N / 60)
-        omega = 2.0 * math.pi * n / 60.0
-        power_kw = torque_kwn * omega
-        # Drive Motor Current: increases with rotational speed (higher shaft power) and bed loading (torque)
-        motor_current_a = i_nom * (0.20 + 0.45 * speed_ratio + 0.35 * filling_ratio)
-
-        # 4. Burner Combustion & Mass Balance
+        # 2. Burner Combustion & Mass Balance
         lhv = in_fuel.composition.get("lhv_mj_kg", 31.4) if in_fuel else 31.4
         caco3_resid = m_meal * (in_caco3_pct / 100.0)
         m_co2_resid = caco3_resid * 0.4397
@@ -130,6 +134,26 @@ class RotaryKiln(BlockBase):
         m_ash_in = m_fuel * ash_pct
         m_clinker = max(0.0, m_meal - m_co2_resid + m_ash_in)
         m_gas_out = m_sec_air + m_pri_air + (m_fuel - m_ash_in) + m_co2_resid
+
+        # 3. Bed Material Holdup & Volumetric Filling Degree
+        # Internal shell volume: V = pi * (D/2)^2 * L
+        v_shell = math.pi * ((d / 2.0) ** 2) * l
+        m_holdup = max(1.0, m_clinker * (residence_min / 60.0))
+        rho_bulk = 1.35  # bulk density of mineral bed (t/m3)
+        v_bed = m_holdup / rho_bulk
+        filling_pct = (v_bed / max(1.0, v_shell)) * 100.0
+        phi_ref = 9.5  # nominal filling degree (%)
+        filling_ratio = max(0.2, min(3.0, filling_pct / phi_ref))
+        speed_ratio = n / n_ref
+
+        # 4. Kiln Drive Torque, Mechanical Power, and Motor Current
+        # Mechanical torque: 30% mechanical/roller friction + 70% bed lifting torque
+        torque_kwn = t_torque_nom * (0.30 + 0.70 * filling_ratio)
+        # Mechanical power: P = T * omega = T * (2*pi*N / 60)
+        omega = 2.0 * math.pi * n / 60.0
+        power_kw = torque_kwn * omega
+        # Drive Motor Current: increases with rotational speed (higher shaft power) and bed loading (torque)
+        motor_current_a = i_nom * (0.20 + 0.45 * speed_ratio + 0.35 * filling_ratio)
 
         # 5. Coupled Thermal Balance with Speed Transit Effect
         m_fuel_ref = 5.2 if is_lime_kiln else 7.20
@@ -249,6 +273,14 @@ class RotaryKiln(BlockBase):
                 },
             )
 
+        # Align dynamic states if uninitialized
+        if "dynamic_clinker_tph" not in self.state or self.state.get("dynamic_clinker_tph") is None:
+            self.state["dynamic_clinker_tph"] = m_clinker
+        if "dynamic_holdup_tons" not in self.state or self.state.get("dynamic_holdup_tons") is None:
+            self.state["dynamic_holdup_tons"] = m_holdup
+        if "dynamic_bz_temp_c" not in self.state or self.state.get("dynamic_bz_temp_c") is None:
+            self.state["dynamic_bz_temp_c"] = t_bz_target
+
         return outlet_streams
 
     def step(
@@ -262,13 +294,15 @@ class RotaryKiln(BlockBase):
         t_bz_target = self.state["burning_zone_temp_c"]
         m_clinker_target = self.state["clinker_rate_tph"]
         m_holdup_target = self.state["bed_holdup_tons"]
+        residence_min = max(0.5, self.state["bed_residence_time_min"])
+        residence_hr = residence_min / 60.0
         n = max(0.1, float(self.parameters.get("speed_rpm", 3.79)))
         in_caco3_pct = float(inlet_streams.get("in_meal_calcined").composition.get("CaCO3_pct", 6.0)) if inlet_streams.get("in_meal_calcined") else 6.0
         n_ref = 2.2 if in_caco3_pct > 70.0 else 3.79
 
-        current_tbz = self.state.get("dynamic_bz_temp_c", t_bz_target)
-        current_clk = self.state.get("dynamic_clinker_tph", m_clinker_target)
-        current_holdup = self.state.get("dynamic_holdup_tons", m_holdup_target)
+        current_tbz = float(self.state.get("dynamic_bz_temp_c", t_bz_target))
+        current_clk = float(self.state.get("dynamic_clinker_tph", m_clinker_target))
+        current_holdup = float(self.state.get("dynamic_holdup_tons", m_holdup_target))
 
         # 1. Thermal inertia: refractory & bed heat capacity (tau ~ 60s)
         tau_bz = 60.0  # seconds
@@ -276,19 +310,19 @@ class RotaryKiln(BlockBase):
 
         # 2. Material bed transport and holdup dynamics:
         # Transit time constant scales inversely with rotational speed
-        tau_transit = max(15.0, 90.0 * (n_ref / n))
+        tau_transit = max(10.0, 30.0 * (n_ref / n))
 
-        # Transient surge effect: when kiln speed jumps, bed discharges faster temporarily
-        holdup_ratio = current_holdup / max(1.0, m_holdup_target)
-        speed_factor = n / n_ref
-        dynamic_discharge_demand = m_clinker_target * (0.3 + 0.7 * speed_factor) * holdup_ratio
+        # Instantaneous discharge demand from tumbling bed:
+        # Material at discharge end is driven by current bed inventory divided by residence time
+        dynamic_discharge_demand = current_holdup / residence_hr
 
         # Smooth discharge flow filter
         new_clk = current_clk + (dynamic_discharge_demand - current_clk) * (dt / max(0.5, tau_transit * 0.25))
-        # Update holdup mass: net difference between target feed clinker and actual clinker outflow
+
+        # Exact mass conservation ODE for bed holdup:
+        # Inflow is target clinker formation from feed; outflow is actual clinker discharged
         d_holdup = (m_clinker_target - new_clk) * (dt / 3600.0)
-        new_holdup = max(5.0, current_holdup + d_holdup)
-        new_holdup += (m_holdup_target - new_holdup) * (dt / max(1.0, tau_transit))
+        new_holdup = max(1.0, current_holdup + d_holdup)
 
         # Recompute dynamic filling degree and motor metrics based on live dynamic holdup
         l = float(self.parameters.get("length_m", 72.0))
@@ -304,9 +338,12 @@ class RotaryKiln(BlockBase):
         dyn_power = dyn_torque * (2.0 * math.pi * n / 60.0)
         dyn_current = i_nom * (0.20 + 0.45 * (n / n_ref) + 0.35 * dyn_filling_ratio)
 
-        self.state["dynamic_bz_temp_c"] = round(new_tbz, 1)
-        self.state["dynamic_clinker_tph"] = round(new_clk, 2)
-        self.state["dynamic_holdup_tons"] = round(new_holdup, 1)
+        # Store exact unrounded floats for dynamic ODE integrator states
+        self.state["dynamic_bz_temp_c"] = new_tbz
+        self.state["dynamic_clinker_tph"] = new_clk
+        self.state["dynamic_holdup_tons"] = new_holdup
+
+        # Store rounded states for telemetry and displays
         self.state["burning_zone_temp_c"] = round(new_tbz, 1)
         self.state["clinker_rate_tph"] = round(new_clk, 2)
         self.state["bed_holdup_tons"] = round(new_holdup, 1)
@@ -317,7 +354,7 @@ class RotaryKiln(BlockBase):
 
         # Dynamic kinetics based on live dynamic BZ temperature
         t_res_nom = 32.0 if in_caco3_pct > 70.0 else 20.6
-        t_res_ratio = max(0.2, self.state["bed_residence_time_min"] / t_res_nom)
+        t_res_ratio = max(0.2, residence_min / t_res_nom)
         if in_caco3_pct > 70.0:
             resid_caco3 = 1.10 * math.exp(-0.007 * (new_tbz - 1280.0)) / math.pow(t_res_ratio, 0.9)
             resid_caco3 = round(max(0.3, min(18.0, resid_caco3)), 2)
