@@ -211,11 +211,27 @@
               <span class="accordion-toggle-arrow" id="arrowComponents">▼</span>
               <span class="accordion-title">📦 Component Library</span>
             </div>
-            <span class="accordion-badge" id="componentCountBadge">14</span>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <button class="palette-btn-mini" id="btnOpenCustomStudioHeader" title="Add Custom Component from Template" style="padding: 2px 7px; font-size: 11px; background: rgba(56, 189, 248, 0.15); border: 1px solid #38BDF8; color: #38BDF8; border-radius: 4px; cursor: pointer; font-weight: 600;">+ Custom</button>
+              <span class="accordion-badge" id="componentCountBadge">15</span>
+            </div>
           </div>
           <div class="palette-accordion-body" id="accBodyComponents">
+            <div class="palette-actions-row" style="padding: 6px 10px 4px 10px;">
+              <button class="btn-create-custom-comp" id="btnOpenCustomStudio" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; background: linear-gradient(135deg, rgba(56,189,248,0.18), rgba(129,140,248,0.18)); border: 1px dashed #38BDF8; color: #38BDF8; padding: 6px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; transition: all 0.2s ease;">
+                <span>✨ + Create Custom Component</span>
+              </button>
+            </div>
             <div class="palette-search-wrapper">
               <input type="text" class="palette-search" id="paletteSearch" placeholder="Filter equipment...">
+            </div>
+            <div class="palette-categories-toolbar" style="display: flex; justify-content: space-between; align-items: center; padding: 4px 10px 6px 10px; font-size: 10px; border-bottom: 1px solid rgba(51, 65, 85, 0.5); margin-bottom: 6px;">
+              <span style="color: #64748B; font-weight: 700; letter-spacing: 0.5px;">LIBRARY MODULES</span>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <button id="btnExpandAllCategories" class="btn-palette-link" type="button" title="Expand all library categories">Expand All</button>
+                <span style="color: #475569;">•</span>
+                <button id="btnCollapseAllCategories" class="btn-palette-link" type="button" title="Collapse all library categories">Collapse All</button>
+              </div>
             </div>
             <div class="palette-items-scroll" id="paletteItemsScroll">
               <!-- Dynamically populated from /api/flowsheet/builder/components -->
@@ -277,6 +293,119 @@
       </div>
     </div>
   </main>
+
+  <!-- MODAL: CUSTOM COMPONENT STUDIO & AUTO-REGISTRATION -->
+  <div class="builder-modal" id="modalCustomComponentStudio" style="display: none;">
+    <div class="builder-modal-backdrop" id="modalCustomStudioBackdrop"></div>
+    <div class="builder-modal-content custom-studio-modal-wide">
+      <div class="builder-modal-header">
+        <div class="modal-header-title">
+          <span style="font-size: 22px;">🛠</span>
+          <div>
+            <h3 style="margin: 0; font-size: 15px;">Custom Component Studio</h3>
+            <span style="font-size: 11px; color: #94A3B8;">Auto-Registered Unit Operations & Dynamic Python Engine</span>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span class="badge-auto-reg" style="background: rgba(34, 197, 94, 0.2); border: 1px solid #22C55E; color: #4ADE80; font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 600;">⚡ Auto-Registration Active</span>
+          <button class="modal-close-btn" id="btnCloseCustomStudio">✕</button>
+        </div>
+      </div>
+      
+      <div class="builder-modal-body" style="padding: 14px 20px; gap: 12px; max-height: calc(88vh - 120px); overflow-y: auto;">
+        <!-- Top Toolbar: Template Chooser & Component Selector -->
+        <div class="studio-top-bar" style="display: flex; gap: 12px; align-items: center; background: #1E293B; padding: 10px 14px; border-radius: 8px; border: 1px solid #334155; flex-wrap: wrap;">
+          <div style="flex: 1.2; min-width: 240px;">
+            <label style="display: block; font-size: 11px; color: #94A3B8; font-weight: 600; margin-bottom: 4px;">1. Starter Template (Pick one to customize):</label>
+            <select id="customCompTemplateSelect" class="form-select" style="width: 100%; background: #0F172A; border: 1px solid #475569; color: #F8FAFC; padding: 6px 10px; border-radius: 6px; font-size: 12px;">
+              <!-- Populated dynamically from /api/flowsheet/builder/custom_components/templates -->
+            </select>
+          </div>
+
+          <div style="flex: 1; min-width: 200px;">
+            <label style="display: block; font-size: 11px; color: #94A3B8; font-weight: 600; margin-bottom: 4px;">Or Edit Saved Custom Unit:</label>
+            <select id="customCompExistingSelect" class="form-select" style="width: 100%; background: #0F172A; border: 1px solid #475569; color: #F8FAFC; padding: 6px 10px; border-radius: 6px; font-size: 12px;">
+              <option value="">-- New from Template --</option>
+            </select>
+          </div>
+
+          <div style="display: flex; align-items: flex-end; gap: 8px;">
+            <button id="btnRescanCustomFolder" class="hdr-btn" style="height: 32px; font-size: 11px;" title="Scan custom/ folder on disk for external file edits">🔄 Rescan Disk</button>
+            <button id="btnDeleteCustomComp" class="hdr-btn" style="height: 32px; font-size: 11px; background: rgba(239,68,68,0.2); border-color: #EF4444; color: #FCA5A5; display: none;" title="Delete this custom component">🗑 Delete</button>
+          </div>
+        </div>
+
+        <!-- Live Metadata / Preview Header Card -->
+        <div class="studio-meta-strip" style="display: flex; gap: 12px; align-items: center; justify-content: space-between; background: #0F172A; border: 1px solid #1E293B; padding: 8px 14px; border-radius: 6px;">
+          <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="font-size: 11px; color: #64748B;">Class:</span>
+              <strong id="customPreviewBlockType" style="color: #38BDF8; font-family: monospace; font-size: 13px;">CustomProcessUnit</strong>
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="font-size: 11px; color: #64748B;">Category:</span>
+              <span id="customPreviewCategory" style="background: #1E293B; color: #E2E8F0; padding: 2px 8px; border-radius: 4px; font-size: 11px;">General</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="font-size: 11px; color: #64748B;">Icon:</span>
+              <span id="customPreviewIcon" style="font-size: 16px;">⚙️</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 4px;">
+              <span style="font-size: 10px; color: #64748B;">Pick Icon:</span>
+              <span class="quick-icon-btn" data-icon="⚙️" style="cursor: pointer; padding: 1px 4px;">⚙️</span>
+              <span class="quick-icon-btn" data-icon="⚡" style="cursor: pointer; padding: 1px 4px;">⚡</span>
+              <span class="quick-icon-btn" data-icon="🔥" style="cursor: pointer; padding: 1px 4px;">🔥</span>
+              <span class="quick-icon-btn" data-icon="🌪" style="cursor: pointer; padding: 1px 4px;">🌪</span>
+              <span class="quick-icon-btn" data-icon="❄️" style="cursor: pointer; padding: 1px 4px;">❄️</span>
+              <span class="quick-icon-btn" data-icon="💨" style="cursor: pointer; padding: 1px 4px;">💨</span>
+              <span class="quick-icon-btn" data-icon="🧪" style="cursor: pointer; padding: 1px 4px;">🧪</span>
+              <span class="quick-icon-btn" data-icon="🔀" style="cursor: pointer; padding: 1px 4px;">🔀</span>
+              <span class="quick-icon-btn" data-icon="🔱" style="cursor: pointer; padding: 1px 4px;">🔱</span>
+              <span class="quick-icon-btn" data-icon="📦" style="cursor: pointer; padding: 1px 4px;">📦</span>
+            </div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span id="customPreviewPortsBadge" style="font-size: 11px; background: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.3); color: #38BDF8; padding: 2px 8px; border-radius: 4px;">1 In / 1 Out</span>
+            <span id="customPreviewParamsBadge" style="font-size: 11px; background: rgba(148, 163, 184, 0.15); border: 1px solid rgba(148, 163, 184, 0.3); color: #94A3B8; padding: 2px 8px; border-radius: 4px;">3 Parameters</span>
+          </div>
+        </div>
+
+        <!-- Python Code Editor Container -->
+        <div class="studio-editor-container" style="display: flex; flex-direction: column; border: 1px solid #334155; border-radius: 8px; overflow: hidden; background: #090D16;">
+          <div class="editor-header" style="display: flex; justify-content: space-between; align-items: center; background: #162032; padding: 6px 12px; border-bottom: 1px solid #1E293B; font-size: 11px;">
+            <div style="display: flex; align-items: center; gap: 8px; color: #94A3B8;">
+              <span>🐍 Python Component Implementation</span>
+              <span style="color: #64748B;">•</span>
+              <span id="customSourceFileBadge" style="color: #64748B; font-family: monospace;">engine/modular/library/custom/custom_process_unit.py</span>
+            </div>
+            <div style="color: #64748B; font-size: 10px;">
+              Press <kbd style="background: #0F172A; padding: 1px 4px; border-radius: 3px; border: 1px solid #334155; color: #94A3B8;">Tab</kbd> to indent • <kbd style="background: #0F172A; padding: 1px 4px; border-radius: 3px; border: 1px solid #334155; color: #94A3B8;">Ctrl+S</kbd> to save
+            </div>
+          </div>
+          <div style="position: relative; height: 350px;">
+            <textarea id="customComponentCodeTextarea" spellcheck="false" style="width: 100%; height: 100%; box-sizing: border-box; background: #0A0F1D; color: #E2E8F0; font-family: 'Consolas', 'Fira Code', monospace; font-size: 12.5px; line-height: 1.5; padding: 12px; border: none; outline: none; resize: none; tab-size: 4; white-space: pre; overflow-wrap: normal; overflow-x: auto;"></textarea>
+          </div>
+        </div>
+
+        <!-- Status & Validation Console Feedback -->
+        <div id="customStudioStatusBox" style="display: none; padding: 10px 14px; border-radius: 6px; font-size: 12px; line-height: 1.4;">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+
+      <!-- Footer Buttons -->
+      <div class="builder-modal-footer" style="padding: 12px 20px; background: #1E293B; border-top: 1px solid #334155; display: flex; justify-content: space-between; align-items: center;">
+        <div style="font-size: 11px; color: #64748B;">
+          💡 Saved files auto-register into <code style="color: #38BDF8;">BLOCK_REGISTRY</code> and are ready to wire immediately.
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button id="btnDownloadCustomPy" class="hdr-btn" style="font-size: 11px;" title="Download Python source file">📥 Download .py</button>
+          <button id="btnValidateCustomComponent" class="hdr-btn" style="background: rgba(56, 189, 248, 0.15); border-color: #38BDF8; color: #38BDF8; font-size: 11px;">🧪 Validate Code</button>
+          <button id="btnSaveCustomComponent" class="hdr-btn btn-green" style="font-size: 11px; font-weight: 700; padding: 6px 14px; box-shadow: 0 0 12px rgba(34, 197, 94, 0.35);">💾 Save & Auto-Register</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- MODAL: SCENARIOS AUTOMATED VERIFICATION MATRIX -->
   <div class="builder-modal" id="modalVerifyScenarios" style="display: none;">

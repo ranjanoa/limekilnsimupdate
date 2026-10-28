@@ -15,7 +15,7 @@ Dynamic First-Principles Pyroprocess Digital Twin, OPC UA Server/Client Bridge, 
 - **Dual Operating Modes**:
   - **Standalone Mode**: Autonomous client-side integration and simulation directly in any modern browser.
   - **OPC UA Mode**: Industrial OPC UA Server (`opc.tcp://0.0.0.0:4841/freeopcua/server/`) / Client Bridge for integrating external Advanced Process Control (APC), Model Predictive Control (MPC), and Reinforcement Learning (RL) agents.
-- **REST & Configuration API**: Live configuration reloading, dynamic tag dictionary endpoints (`/api/tags`, `/api/tags/toggle`, `/api/tags/value`, `/api/tags/create`, `/api/tags/delete`), OPC diagnostic endpoint (`/api/opc/test`), and real-time telemetry streaming at `http://localhost:8080/api/telemetry`.
+- **REST & Configuration API**: Live configuration reloading, dynamic tag dictionary endpoints (`/api/tags`, `/api/tags/toggle`, `/api/tags/value`, `/api/tags/create`, `/api/tags/delete`), OPC diagnostic endpoint (`/api/opc/test`), and real-time telemetry streaming at `http://localhost:8085/api/telemetry`.
 - **Steady-State Benchmark Excel Model**: Complete 10-sheet dynamic flowsheet spreadsheet (`Cement_Kiln_Steady_State_Simulation_280TPH.xlsx`) with 295 formula-linked mass & heat balance calculations.
 
 ---
@@ -46,7 +46,7 @@ py server.py
 ```
 
 Then open your browser at:
-👉 **`http://localhost:8080/index.html`**
+👉 **`http://localhost:8085/index.html`** *(or the port displayed in the console; automatically detects conflicts like PostgreSQL on port 8080 and selects the next available port)*
 
 ### 2. Standalone Server Mode (Without OPC UA)
 

@@ -2623,6 +2623,18 @@ input:checked + .toggle-slider:before {
   border: 1px solid rgba(168, 85, 247, 0.4);
 }
 
+.phase-signal {
+  background: rgba(16, 185, 129, 0.18);
+  color: #34D399;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+.phase-binary {
+  background: rgba(244, 63, 94, 0.18);
+  color: #FB7185;
+  border: 1px solid rgba(244, 63, 94, 0.4);
+}
+
 /* ==========================================================================
    14. MODULAR FLOWSHEET BUILDER & CAD WORKSPACE
    ========================================================================== */
@@ -3482,26 +3494,89 @@ html.app-fullscreen {
   padding: 8px;
 }
 
+.btn-palette-link {
+  background: none;
+  border: none;
+  color: #38BDF8;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 1px 4px;
+  border-radius: 3px;
+  transition: all 0.15s ease;
+}
+
+.btn-palette-link:hover {
+  background: rgba(56, 189, 248, 0.15);
+  color: #7DD3FC;
+}
+
 .palette-category {
-  margin-bottom: 12px;
+  margin-bottom: 8px;
+  border-radius: 6px;
+  background: rgba(15, 23, 42, 0.45);
+  border: 1px solid rgba(51, 65, 85, 0.5);
+  overflow: hidden;
+  transition: all 0.2s ease;
 }
 
 .palette-category-title {
-  font-size: 10px;
+  font-size: 10.5px;
   font-weight: 700;
   color: #94A3B8;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  padding: 4px 6px;
-  margin-bottom: 4px;
-  border-bottom: 1px dashed rgba(71, 85, 105, 0.5);
+  padding: 6px 8px;
+  background: rgba(30, 41, 59, 0.75);
+  border-bottom: 1px solid rgba(51, 65, 85, 0.4);
   display: flex;
+  align-items: center;
   justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.palette-category-title:hover {
+  background: rgba(56, 189, 248, 0.12);
+  color: #F8FAFC;
+}
+
+.palette-category-title-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.palette-category-title .cat-arrow {
+  font-size: 8px;
+  color: #38BDF8;
+  display: inline-block;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 10px;
+}
+
+.palette-category.collapsed .cat-arrow {
+  transform: rotate(-90deg);
+}
+
+.palette-category.collapsed .palette-category-items {
+  display: none;
 }
 
 .palette-category-title .count {
-  color: #64748B;
+  font-size: 9px;
+  background: #0F172A;
+  color: #38BDF8;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  padding: 1px 5px;
+  border-radius: 10px;
   font-family: var(--font-mono);
+  font-weight: 700;
+}
+
+.palette-category-items {
+  padding: 5px 6px 3px 6px;
 }
 
 .palette-block-card {
@@ -3511,8 +3586,8 @@ html.app-fullscreen {
   background: #1E293B;
   border: 1px solid #334155;
   border-radius: 6px;
-  padding: 6px 8px;
-  margin-bottom: 5px;
+  padding: 5px 7px;
+  margin-bottom: 4px;
   cursor: grab;
   user-select: none;
   transition: all 0.15s ease;
@@ -3522,7 +3597,7 @@ html.app-fullscreen {
   background: #273549;
   border-color: #38BDF8;
   transform: translateX(2px);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
 }
 
 .palette-block-card:active {
@@ -3532,20 +3607,22 @@ html.app-fullscreen {
 .palette-card-left {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
+  min-width: 0;
+  flex: 1;
   overflow: hidden;
 }
 
 .palette-card-icon {
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   border-radius: 4px;
   background: rgba(56, 189, 248, 0.12);
   color: #38BDF8;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 13px;
+  font-size: 12px;
   flex-shrink: 0;
 }
 
@@ -3556,6 +3633,15 @@ html.app-fullscreen {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: 1.25;
+}
+
+.palette-card-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  margin-left: 6px;
 }
 
 .palette-card-badge {
@@ -3566,7 +3652,8 @@ html.app-fullscreen {
   border-radius: 3px;
   padding: 1px 4px;
   font-family: var(--font-mono);
-  flex-shrink: 0;
+  font-weight: 600;
+  letter-spacing: -0.2px;
 }
 
 /* Center: CAD Interactive Grid & SVG Canvas */
@@ -3618,24 +3705,31 @@ html.app-fullscreen {
 
 .builder-node-title {
   fill: #F8FAFC;
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 700;
+  letter-spacing: 0.2px;
   pointer-events: none;
+  user-select: none;
 }
 
 .builder-node-id {
   fill: #38BDF8;
-  font-size: 9.5px;
+  font-size: 9px;
   font-family: var(--font-mono);
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: 0.3px;
   pointer-events: none;
+  user-select: none;
 }
 
 .builder-node-telemetry {
   fill: #94A3B8;
-  font-size: 9.5px;
+  font-size: 8.5px;
   font-family: var(--font-mono);
+  font-weight: 600;
+  letter-spacing: 0.2px;
   pointer-events: none;
+  user-select: none;
 }
 
 /* Port Anchors */
@@ -3654,6 +3748,8 @@ html.app-fullscreen {
 .port-circle.phase-gas { fill: #EF4444; }
 .port-circle.phase-air { fill: #06B6D4; }
 .port-circle.phase-fuel { fill: #A855F7; }
+.port-circle.phase-signal { fill: #10B981; }
+.port-circle.phase-binary { fill: #F43F5E; }
 
 .port-group:hover .port-circle {
   r: 8.5;
@@ -3663,10 +3759,20 @@ html.app-fullscreen {
 }
 
 .port-label {
-  fill: #94A3B8;
-  font-size: 8.5px;
+  font-size: 8px;
+  font-family: var(--font-mono);
   font-weight: 600;
+  letter-spacing: 0.2px;
   pointer-events: none;
+  user-select: none;
+}
+
+.port-label-in {
+  fill: #94A3B8;
+}
+
+.port-label-out {
+  fill: #CBD5E1;
 }
 
 /* Connecting Process Stream Wires */
@@ -3681,6 +3787,21 @@ html.app-fullscreen {
 .stream-wire-path.phase-gas { stroke: #EF4444; }
 .stream-wire-path.phase-air { stroke: #06B6D4; }
 .stream-wire-path.phase-fuel { stroke: #A855F7; }
+.stream-wire-path.phase-signal { stroke: #06B6D4; stroke-dasharray: 4 2; }
+.stream-wire-path.phase-binary { stroke: #F43F5E; stroke-dasharray: 6 3; }
+
+.stream-wire-path.phase-binary.binary-high {
+  stroke: #10B981;
+  stroke-width: 3;
+  stroke-dasharray: none;
+  filter: drop-shadow(0 0 4px rgba(16, 185, 129, 0.4));
+}
+
+.stream-wire-path.phase-binary.binary-low {
+  stroke: #64748B;
+  stroke-width: 2;
+  stroke-dasharray: 5 3;
+}
 
 .stream-wire-group:hover .stream-wire-path {
   stroke-width: 4;
@@ -3713,6 +3834,24 @@ html.app-fullscreen {
   cursor: pointer;
 }
 
+.stream-badge-rect.badge-binary-true {
+  fill: #064E3B;
+  stroke: #10B981;
+  stroke-width: 1.2;
+}
+
+.stream-badge-rect.badge-binary-false {
+  fill: #1E293B;
+  stroke: #475569;
+  stroke-width: 1;
+}
+
+.stream-badge-rect.badge-signal {
+  fill: #082F49;
+  stroke: #0284C7;
+  stroke-width: 1.2;
+}
+
 .stream-badge-text {
   fill: #F1F5F9;
   font-size: 9px;
@@ -3721,6 +3860,23 @@ html.app-fullscreen {
   text-anchor: middle;
   dominant-baseline: central;
   pointer-events: none;
+}
+
+.stream-badge-text.badge-binary-true {
+  fill: #34D399;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.stream-badge-text.badge-binary-false {
+  fill: #94A3B8;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.stream-badge-text.badge-signal {
+  fill: #38BDF8;
+  font-weight: 600;
 }
 
 /* Elastic drafting wire during connection */
@@ -4233,4 +4389,82 @@ html.app-fullscreen {
   border-radius: 3px;
   font-weight: 700;
   font-size: 10px;
+}
+
+/* =========================================================================
+   CUSTOM COMPONENT STUDIO & AUTO-REGISTRATION MODAL
+   ========================================================================= */
+
+.builder-modal-content.custom-studio-modal-wide {
+  position: relative;
+  z-index: 101;
+  background: #0F172A;
+  border: 1px solid #38BDF8;
+  border-radius: 10px;
+  width: 94%;
+  max-width: 1120px;
+  max-height: 92%;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.85), 0 0 30px rgba(56, 189, 248, 0.25);
+  overflow: hidden;
+}
+
+.btn-create-custom-comp:hover {
+  background: linear-gradient(135deg, rgba(56,189,248,0.35), rgba(129,140,248,0.35)) !important;
+  border-color: #7DD3FC !important;
+  color: #FFFFFF !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(56, 189, 248, 0.25);
+}
+
+.palette-btn-mini:hover {
+  background: rgba(56, 189, 248, 0.3) !important;
+  color: #FFFFFF !important;
+}
+
+.quick-icon-btn {
+  font-size: 14px;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.quick-icon-btn:hover {
+  background: #334155;
+  transform: scale(1.2);
+}
+
+.badge-custom-tag {
+  background: linear-gradient(135deg, rgba(236, 72, 153, 0.25), rgba(168, 85, 247, 0.25));
+  border: 1px solid #EC4899;
+  color: #F472B6;
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.palette-card-btn-edit {
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.15s ease;
+  background: rgba(56, 189, 248, 0.2);
+  border: 1px solid #38BDF8;
+  color: #38BDF8;
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.palette-block-card:hover .palette-card-btn-edit {
+  opacity: 1;
+}
+
+.palette-card-btn-edit:hover {
+  background: #38BDF8;
+  color: #0F172A;
+  transform: scale(1.08);
 }

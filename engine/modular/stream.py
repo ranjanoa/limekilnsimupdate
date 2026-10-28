@@ -14,13 +14,15 @@ class StreamPhase(str, Enum):
     FUEL = "FUEL"
     AIR = "AIR"
     LIQUID = "LIQUID"
+    SIGNAL = "SIGNAL"   # Continuous analog control/measurement signal
+    BINARY = "BINARY"   # Discrete binary/digital state (True/False)
     ANY = "ANY"
 
 
 class ProcessStream:
     """
     Thermodynamic Process Stream representing material and energy transport
-    between two unit operation ports.
+    or discrete/analog control signals between two unit operation ports.
     """
 
     def __init__(
@@ -38,6 +40,8 @@ class ProcessStream:
         pressure_mbar: float = 0.0,
         enthalpy_gjh: Optional[float] = None,
         composition: Optional[Dict[str, float]] = None,
+        signal_value: float = 0.0,
+        binary_state: bool = False,
     ):
         self.stream_id = stream_id
         self.name = name or f"Stream_{stream_id}"
@@ -50,17 +54,26 @@ class ProcessStream:
         self.temperature_c = float(temperature_c)
         self.pressure_mbar = float(pressure_mbar)
         self.composition = composition or {}
+        self.signal_value = float(signal_value)
+        self.binary_state = bool(binary_state)
 
-        # Derived thermodynamic quantities
-        if volume_flow_nm3h is not None:
-            self.volume_flow_nm3h = float(volume_flow_nm3h)
+        # Logic and control signals are non-material (mass flow, volume flow, and enthalpy are zero)
+        if self.phase in (StreamPhase.SIGNAL, StreamPhase.BINARY):
+            self.mass_flow_tph = 0.0
+            self.volume_flow_nm3h = None
+            self.enthalpy_gjh = 0.0
+            self.pressure_mbar = 0.0
         else:
-            self.volume_flow_nm3h = self._estimate_volume_flow()
+            # Derived thermodynamic quantities
+            if volume_flow_nm3h is not None:
+                self.volume_flow_nm3h = float(volume_flow_nm3h)
+            else:
+                self.volume_flow_nm3h = self._estimate_volume_flow()
 
-        if enthalpy_gjh is not None:
-            self.enthalpy_gjh = float(enthalpy_gjh)
-        else:
-            self.enthalpy_gjh = self.compute_enthalpy()
+            if enthalpy_gjh is not None:
+                self.enthalpy_gjh = float(enthalpy_gjh)
+            else:
+                self.enthalpy_gjh = self.compute_enthalpy()
 
     def get_heat_capacity_kcal_kg_c(self) -> float:
         """
@@ -121,6 +134,8 @@ class ProcessStream:
         pressure_mbar: Optional[float] = None,
         composition: Optional[Dict[str, float]] = None,
         volume_flow_nm3h: Optional[float] = None,
+        signal_value: Optional[float] = None,
+        binary_state: Optional[bool] = None,
     ):
         """Updates stream physical state and recalculates thermodynamic properties."""
         if mass_flow_tph is not None:
@@ -136,7 +151,20 @@ class ProcessStream:
         else:
             self.volume_flow_nm3h = self._estimate_volume_flow()
 
-        self.compute_enthalpy()
+        if signal_value is not None:
+            self.signal_value = float(signal_value)
+        if binary_state is not None:
+            self.binary_state = bool(binary_state)
+            if signal_value is None:
+                self.signal_value = 1.0 if self.binary_state else 0.0
+
+        if self.phase in (StreamPhase.SIGNAL, StreamPhase.BINARY):
+            self.mass_flow_tph = 0.0
+            self.volume_flow_nm3h = None
+            self.enthalpy_gjh = 0.0
+            self.pressure_mbar = 0.0
+        else:
+            self.compute_enthalpy()
 
     def clone(self, new_id: Optional[int] = None) -> "ProcessStream":
         """Creates a deep copy of this stream."""
@@ -154,6 +182,8 @@ class ProcessStream:
             pressure_mbar=self.pressure_mbar,
             enthalpy_gjh=self.enthalpy_gjh,
             composition=copy.deepcopy(self.composition),
+            signal_value=self.signal_value,
+            binary_state=self.binary_state,
         )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -172,6 +202,8 @@ class ProcessStream:
             "pressure_mbar": round(self.pressure_mbar, 2),
             "enthalpy_gjh": round(self.enthalpy_gjh, 3),
             "composition": self.composition,
+            "signal_value": round(self.signal_value, 4),
+            "binary_state": self.binary_state,
         }
 
     @classmethod
@@ -191,4 +223,6 @@ class ProcessStream:
             pressure_mbar=data.get("pressure_mbar", 0.0),
             enthalpy_gjh=data.get("enthalpy_gjh"),
             composition=data.get("composition", {}),
+            signal_value=data.get("signal_value", 0.0),
+            binary_state=data.get("binary_state", False),
         )

@@ -1,8 +1,9 @@
+import os
 import requests
 import json
 import time
 
-BASE_URL = "http://localhost:8080"
+BASE_URL = os.environ.get("SIMULATOR_URL", "http://localhost:8085")
 
 def test_endpoints():
     print("Testing /api/tags GET...")

@@ -42,6 +42,8 @@ jobs:
             --hidden-import "engine" `
             --hidden-import "interfaces" `
             --collect-all "asyncua" `
+            --collect-all "engine" `
+            --collect-all "interfaces" `
             server.py
 
       - name: Verify Executable Generated

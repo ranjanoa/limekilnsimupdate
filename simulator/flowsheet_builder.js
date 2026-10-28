@@ -37,6 +37,10 @@
     simSpeed: 1.0,
     streamCounter: 1,
     flowsheetTab: 'all',
+    customTemplates: [],
+    customComponents: [],
+    activeEditingCustomType: null,
+    collapsedCategories: new Set(),
   };
 
   // Phase color definitions
@@ -46,6 +50,8 @@
     AIR: '#06B6D4',
     FUEL: '#A855F7',
     LIQUID: '#3B82F6',
+    SIGNAL: '#10B981',
+    BINARY: '#F43F5E',
   };
 
   // DOM Elements cache
@@ -61,6 +67,26 @@
       graphGroup: document.getElementById('builderGraphGroup'),
       paletteScroll: document.getElementById('paletteItemsScroll'),
       paletteSearch: document.getElementById('paletteSearch'),
+      modalCustomStudio: document.getElementById('modalCustomComponentStudio'),
+      modalCustomStudioBackdrop: document.getElementById('modalCustomStudioBackdrop'),
+      btnOpenCustomStudio: document.getElementById('btnOpenCustomStudio'),
+      btnOpenCustomStudioHeader: document.getElementById('btnOpenCustomStudioHeader'),
+      btnCloseCustomStudio: document.getElementById('btnCloseCustomStudio'),
+      customCompTemplateSelect: document.getElementById('customCompTemplateSelect'),
+      customCompExistingSelect: document.getElementById('customCompExistingSelect'),
+      customCompCodeTextarea: document.getElementById('customComponentCodeTextarea'),
+      customPreviewBlockType: document.getElementById('customPreviewBlockType'),
+      customPreviewCategory: document.getElementById('customPreviewCategory'),
+      customPreviewIcon: document.getElementById('customPreviewIcon'),
+      customPreviewPortsBadge: document.getElementById('customPreviewPortsBadge'),
+      customPreviewParamsBadge: document.getElementById('customPreviewParamsBadge'),
+      customSourceFileBadge: document.getElementById('customSourceFileBadge'),
+      customStudioStatusBox: document.getElementById('customStudioStatusBox'),
+      btnValidateCustomComponent: document.getElementById('btnValidateCustomComponent'),
+      btnSaveCustomComponent: document.getElementById('btnSaveCustomComponent'),
+      btnDownloadCustomPy: document.getElementById('btnDownloadCustomPy'),
+      btnRescanCustomFolder: document.getElementById('btnRescanCustomFolder'),
+      btnDeleteCustomComp: document.getElementById('btnDeleteCustomComp'),
       accHeaderFlowsheets: document.getElementById('accHeaderFlowsheets'),
       accHeaderComponents: document.getElementById('accHeaderComponents'),
       accSectionFlowsheets: document.getElementById('accSectionFlowsheets'),
@@ -110,6 +136,8 @@
       btnZoomOut: document.getElementById('btnBuilderZoomOut'),
       btnZoomReset: document.getElementById('btnBuilderZoomReset'),
       btnFit: document.getElementById('btnBuilderFit'),
+      btnExpandAllCategories: document.getElementById('btnExpandAllCategories'),
+      btnCollapseAllCategories: document.getElementById('btnCollapseAllCategories'),
       scenarioSelect: document.getElementById('builderScenarioSelect'),
       btnApplyScenario: document.getElementById('btnBuilderApplyScenario'),
       btnVerifyScenarios: document.getElementById('btnBuilderVerifyScenarios'),
@@ -136,6 +164,12 @@
         state.catalog = await catRes.json();
         renderPalette(state.catalog);
       }
+
+      // 1b. Load custom templates and custom components
+      await Promise.allSettled([
+        loadCustomComponentTemplates(),
+        loadCustomComponentsList(),
+      ]);
 
       // 2. Fetch templates
       const tplRes = await fetch('/api/flowsheet/builder/templates');
@@ -230,10 +264,26 @@
 
       if (actData.flowsheet.connections) {
         actData.flowsheet.connections.forEach(serverConn => {
-          const localConn = state.graph.connections.find(c => c.stream_id === serverConn.stream_id);
-          if (localConn && localConn.mass_flow_tph !== serverConn.mass_flow_tph) {
-            localConn.mass_flow_tph = serverConn.mass_flow_tph;
-            changed = true;
+          const localConn = state.graph.connections.find(c =>
+            c.stream_id === serverConn.stream_id &&
+            c.source?.block === serverConn.source?.block &&
+            c.target?.block === serverConn.target?.block
+          );
+          if (localConn) {
+            if (localConn.phase === 'BINARY' || localConn.phase === 'SIGNAL') {
+              localConn.mass_flow_tph = 0.0;
+              if (serverConn.binary_state !== undefined && localConn.binary_state !== Boolean(serverConn.binary_state)) {
+                localConn.binary_state = Boolean(serverConn.binary_state);
+                changed = true;
+              }
+              if (serverConn.signal_value !== undefined && localConn.signal_value !== serverConn.signal_value) {
+                localConn.signal_value = serverConn.signal_value;
+                changed = true;
+              }
+            } else if (localConn.mass_flow_tph !== serverConn.mass_flow_tph) {
+              localConn.mass_flow_tph = serverConn.mass_flow_tph;
+              changed = true;
+            }
           }
         });
       }
@@ -282,6 +332,7 @@
     });
 
     const categoryIcons = {
+      'Custom': '✨',
       'Feeding': '📦',
       'Separation': '🌪',
       'Combustion': '🔥',
@@ -290,17 +341,52 @@
       'Draft / Fans': '💨',
       'Flow Control': '🔀',
       'Instrumentation': '🔬',
+      'Control / Analog': '📈',
+      'Control / Binary': '🔲',
       'General': '⚙️',
     };
+
+    state.collapsedCategories = state.collapsedCategories || new Set();
 
     Object.entries(categories).forEach(([catName, items]) => {
       const catDiv = document.createElement('div');
       catDiv.className = 'palette-category';
 
+      const isFiltered = Boolean(filter && filter.trim());
+      const isCollapsed = !isFiltered && state.collapsedCategories.has(catName);
+      if (isCollapsed) {
+        catDiv.classList.add('collapsed');
+      }
+
       const catTitle = document.createElement('div');
       catTitle.className = 'palette-category-title';
-      catTitle.innerHTML = `<span>${categoryIcons[catName] || '🔹'} ${catName}</span> <span class="count">${items.length}</span>`;
+      catTitle.title = 'Click to collapse/expand category';
+      catTitle.innerHTML = `
+        <div class="palette-category-title-left">
+          <span class="cat-arrow">${isCollapsed ? '▶' : '▼'}</span>
+          <span>${categoryIcons[catName] || '🔹'} ${catName}</span>
+        </div>
+        <span class="count">${items.length}</span>
+      `;
+
+      catTitle.addEventListener('click', () => {
+        if (state.collapsedCategories.has(catName)) {
+          state.collapsedCategories.delete(catName);
+          catDiv.classList.remove('collapsed');
+          const arrow = catTitle.querySelector('.cat-arrow');
+          if (arrow) arrow.textContent = '▼';
+        } else {
+          state.collapsedCategories.add(catName);
+          catDiv.classList.add('collapsed');
+          const arrow = catTitle.querySelector('.cat-arrow');
+          if (arrow) arrow.textContent = '▶';
+        }
+      });
+
       catDiv.appendChild(catTitle);
+
+      const itemsContainer = document.createElement('div');
+      itemsContainer.className = 'palette-category-items';
 
       items.forEach((item) => {
         const card = document.createElement('div');
@@ -310,14 +396,30 @@
 
         const inCount = item.ports.filter(p => p.direction === 'IN').length;
         const outCount = item.ports.filter(p => p.direction === 'OUT').length;
+        const isCustom = item.is_custom || item.category === 'Custom';
+        const customBadge = isCustom ? '<span class="badge-custom-tag" style="margin-left: 4px;">CUSTOM</span>' : '';
+        const editBtn = isCustom ? `<button class="palette-card-btn-edit" data-edit-custom="${item.type}" title="Edit Component Code">✏️</button>` : '';
 
         card.innerHTML = `
           <div class="palette-card-left">
             <div class="palette-card-icon">${getBlockIcon(item.type)}</div>
-            <div class="palette-card-name" title="${item.type}">${formatBlockDisplayName(item.type)}</div>
+            <div class="palette-card-name" title="${item.type}">${formatBlockDisplayName(item.type)} ${customBadge}</div>
           </div>
-          <span class="palette-card-badge" title="${inCount} Inlets, ${outCount} Outlets">${inCount}I / ${outCount}O</span>
+          <div class="palette-card-right">
+            ${editBtn}
+            <span class="palette-card-badge" title="${inCount} Inlets, ${outCount} Outlets">${inCount}I / ${outCount}O</span>
+          </div>
         `;
+
+        if (isCustom) {
+          const btn = card.querySelector('[data-edit-custom]');
+          if (btn) {
+            btn.addEventListener('click', (e) => {
+              e.stopPropagation();
+              openCustomComponentStudio(item.type);
+            });
+          }
+        }
 
         card.addEventListener('dragstart', (e) => {
           e.dataTransfer.setData('text/plain', item.type);
@@ -330,11 +432,16 @@
           addBlockToGraph(item.type, pt.x, pt.y);
         });
 
-        catDiv.appendChild(card);
+        itemsContainer.appendChild(card);
       });
 
+      catDiv.appendChild(itemsContainer);
       dom.paletteScroll.appendChild(catDiv);
     });
+
+    if (dom.componentCountBadge) {
+      dom.componentCountBadge.textContent = catalog.length;
+    }
   }
 
   function populateTemplateSelect(templates) {
@@ -644,13 +751,55 @@
   }
 
   function formatBlockDisplayName(type) {
+    const specialNames = {
+      PIDController: 'PID Controller',
+      IDFan: 'ID Fan',
+      RSFlipFlop: 'RS Flip-Flop',
+      LeadLagFilter: 'Lead-Lag Filter',
+      ControlValveActuator: 'Control Valve',
+      AnalogMathBlock: 'Analog Math',
+      AnalogAdder: 'Analog Adder',
+      AnalogSubtractor: 'Analog Subtractor',
+      AnalogMultiplier: 'Analog Multiplier',
+      AnalogEquationBlock: 'Equation Block',
+      AnalogSelect: 'Analog Selector Switch',
+      AnalogComparator: 'Analog Comparator',
+      AnalogConstant: 'Analog Constant',
+      BinaryConstant: 'Binary Constant',
+      ProcessTransmitter: 'Transmitter',
+      LogicGate: 'Logic Gate',
+      TimerDelay: 'Timer Delay',
+      EdgeDetector: 'Edge Detector',
+      InterlockMatrix: 'Interlock Matrix',
+      SignalSelector: 'Signal Selector',
+      RateLimiter: 'Rate Limiter',
+      GravimetricFeeder: 'Raw Feeder',
+      FuelFeeder: 'Fuel Feeder',
+      SiloStorage: 'Silo Storage',
+      CycloneStage: 'Cyclone Stage',
+      CalcinerReactor: 'Calciner',
+      RotaryKiln: 'Rotary Kiln',
+      GrateCooler: 'Grate Cooler',
+      StreamSensor: 'Stream Sensor',
+      StreamMixer: 'Stream Mixer',
+      FuelMixer: 'Fuel Mixer',
+      AirMixer: 'Air Mixer',
+      GasMixer: 'Gas Mixer',
+      StreamSplitter: 'Stream Splitter',
+      DamperValve: 'Damper Valve',
+    };
+    if (specialNames[type]) return specialNames[type];
     return type
-      .replace(/([A-Z])/g, ' $1')
-      .replace(/^./, str => str.toUpperCase())
+      .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
+      .replace(/([a-z\d])([A-Z])/g, '$1 $2')
       .trim();
   }
 
   function getBlockIcon(type) {
+    if (state.catalog) {
+      const found = state.catalog.find(c => c.type === type);
+      if (found && found.icon) return found.icon;
+    }
     const icons = {
       GravimetricFeeder: '⚖️',
       FuelFeeder: '🔥',
@@ -667,8 +816,334 @@
       GasMixer: '🔀♨️',
       StreamSplitter: '🔱',
       DamperValve: '🔘',
+      // Analog Control & Signal Processing
+      PIDController: '🕹️',
+      LeadLagFilter: '📈',
+      AnalogComparator: '⚠️',
+      SignalSelector: '🔀',
+      RateLimiter: '📐',
+      AnalogMathBlock: '🧮',
+      AnalogAdder: '➕',
+      AnalogSubtractor: '➖',
+      AnalogMultiplier: '✖️',
+      AnalogEquationBlock: '📐',
+      AnalogSelect: '🔀',
+      ProcessTransmitter: '📡',
+      ControlValveActuator: '🚰',
+      AnalogConstant: '🔢',
+      // Binary & Discrete Logic
+      LogicGate: '🚪',
+      RSFlipFlop: '🔲',
+      TimerDelay: '⏱️',
+      EdgeDetector: '⚡',
+      InterlockMatrix: '🔒',
+      BinaryConstant: '🔘',
     };
-    return icons[type] || '📦';
+    return icons[type] || '⚙️';
+  }
+
+  // =========================================================================
+  // 2b. CUSTOM COMPONENT STUDIO & AUTO-REGISTRATION
+  // =========================================================================
+
+  async function loadCustomComponentTemplates() {
+    try {
+      const res = await fetch('/api/flowsheet/builder/custom_components/templates');
+      if (res.ok) {
+        state.customTemplates = await res.json();
+        populateCustomTemplateSelect();
+      }
+    } catch (e) {
+      console.warn('Could not load custom component templates:', e);
+    }
+  }
+
+  async function loadCustomComponentsList() {
+    try {
+      const res = await fetch('/api/flowsheet/builder/custom_components');
+      if (res.ok) {
+        state.customComponents = await res.json();
+        populateCustomExistingSelect();
+      }
+    } catch (e) {
+      console.warn('Could not load custom components list:', e);
+    }
+  }
+
+  function populateCustomTemplateSelect() {
+    if (!dom.customCompTemplateSelect) return;
+    dom.customCompTemplateSelect.innerHTML = '<option value="">-- Choose a Starter Template --</option>';
+    (state.customTemplates || []).forEach(tpl => {
+      const opt = document.createElement('option');
+      opt.value = tpl.id;
+      opt.textContent = `${tpl.icon || '📦'} ${tpl.name} (${tpl.category})`;
+      dom.customCompTemplateSelect.appendChild(opt);
+    });
+  }
+
+  function populateCustomExistingSelect() {
+    if (!dom.customCompExistingSelect) return;
+    dom.customCompExistingSelect.innerHTML = '<option value="">-- New from Template --</option>';
+    (state.customComponents || []).forEach(comp => {
+      const opt = document.createElement('option');
+      opt.value = comp.type;
+      opt.textContent = `${comp.icon || '⚙️'} ${comp.type} [${comp.file_name || comp.type}]`;
+      dom.customCompExistingSelect.appendChild(opt);
+    });
+  }
+
+  function openCustomComponentStudio(initialBlockType = null) {
+    if (!dom.modalCustomStudio) return;
+    dom.modalCustomStudio.style.display = 'flex';
+    clearCustomStatusBox();
+
+    if (initialBlockType) {
+      // Editing existing component
+      state.activeEditingCustomType = initialBlockType;
+      const comp = (state.customComponents || []).find(c => c.type === initialBlockType);
+      if (comp) {
+        if (dom.customCompExistingSelect) dom.customCompExistingSelect.value = initialBlockType;
+        if (dom.customCompCodeTextarea) dom.customCompCodeTextarea.value = comp.source_code || '';
+        if (dom.customSourceFileBadge) dom.customSourceFileBadge.textContent = comp.file_name || `engine/modular/library/custom/${initialBlockType.toLowerCase()}.py`;
+        if (dom.btnDeleteCustomComp) dom.btnDeleteCustomComp.style.display = 'inline-block';
+        updateCustomStudioPreview(comp.source_code);
+      }
+    } else {
+      // Starting new from selected or first template
+      state.activeEditingCustomType = null;
+      if (dom.btnDeleteCustomComp) dom.btnDeleteCustomComp.style.display = 'none';
+      if (dom.customCompExistingSelect) dom.customCompExistingSelect.value = '';
+
+      if (state.customTemplates && state.customTemplates.length > 0) {
+        const firstTpl = state.customTemplates[0];
+        if (dom.customCompTemplateSelect) dom.customCompTemplateSelect.value = firstTpl.id;
+        if (dom.customCompCodeTextarea) dom.customCompCodeTextarea.value = firstTpl.code;
+        if (dom.customSourceFileBadge) dom.customSourceFileBadge.textContent = 'engine/modular/library/custom/custom_process_unit.py';
+        updateCustomStudioPreview(firstTpl.code);
+      }
+    }
+  }
+
+  function closeCustomComponentStudio() {
+    if (dom.modalCustomStudio) {
+      dom.modalCustomStudio.style.display = 'none';
+    }
+    clearCustomStatusBox();
+  }
+
+  function updateCustomStudioPreview(code) {
+    if (!code) return;
+    // Regex extract block_type, category, icon
+    const typeMatch = code.match(/block_type\s*=\s*["']([^"']+)["']/);
+    const catMatch = code.match(/category\s*=\s*["']([^"']+)["']/);
+    const iconMatch = code.match(/icon\s*=\s*["']([^"']+)["']/);
+
+    const bType = typeMatch ? typeMatch[1] : 'CustomBlock';
+    const bCat = catMatch ? catMatch[1] : 'Custom';
+    const bIcon = iconMatch ? iconMatch[1] : '⚙️';
+
+    if (dom.customPreviewBlockType) dom.customPreviewBlockType.textContent = bType;
+    if (dom.customPreviewCategory) dom.customPreviewCategory.textContent = bCat;
+    if (dom.customPreviewIcon) dom.customPreviewIcon.textContent = bIcon;
+
+    // Count Port declarations
+    const portMatches = code.match(/Port\s*\(/g);
+    const portCount = portMatches ? portMatches.length : 0;
+    if (dom.customPreviewPortsBadge) {
+      dom.customPreviewPortsBadge.textContent = `${portCount} Ports defined`;
+    }
+
+    // Update filename badge
+    const cleanSnake = bType.replace(/([A-Z])/g, '_$1').toLowerCase().replace(/^_/, '');
+    if (dom.customSourceFileBadge) {
+      dom.customSourceFileBadge.textContent = `engine/modular/library/custom/${cleanSnake}.py`;
+    }
+  }
+
+  function showCustomStatusBox(isSuccess, message, details = '') {
+    if (!dom.customStudioStatusBox) return;
+    dom.customStudioStatusBox.style.display = 'block';
+    if (isSuccess) {
+      dom.customStudioStatusBox.style.background = 'rgba(34, 197, 94, 0.15)';
+      dom.customStudioStatusBox.style.border = '1px solid #22C55E';
+      dom.customStudioStatusBox.style.color = '#4ADE80';
+      dom.customStudioStatusBox.innerHTML = `<strong>✅ ${message}</strong>${details ? `<div style="margin-top: 4px; font-size: 11px; color: #86EFAC;">${details}</div>` : ''}`;
+    } else {
+      dom.customStudioStatusBox.style.background = 'rgba(239, 68, 68, 0.15)';
+      dom.customStudioStatusBox.style.border = '1px solid #EF4444';
+      dom.customStudioStatusBox.style.color = '#FCA5A5';
+      dom.customStudioStatusBox.innerHTML = `<strong>❌ ${message}</strong>${details ? `<pre style="margin-top: 6px; padding: 8px; background: rgba(0,0,0,0.4); border-radius: 4px; overflow-x: auto; font-family: monospace; font-size: 11px; white-space: pre-wrap;">${details}</pre>` : ''}`;
+    }
+  }
+
+  function clearCustomStatusBox() {
+    if (dom.customStudioStatusBox) {
+      dom.customStudioStatusBox.style.display = 'none';
+      dom.customStudioStatusBox.innerHTML = '';
+    }
+  }
+
+  async function validateCustomComponent(showSuccessToast = true) {
+    const code = dom.customCompCodeTextarea ? dom.customCompCodeTextarea.value : '';
+    if (!code || !code.trim()) {
+      showCustomStatusBox(false, 'Code is empty. Please enter or select Python component code.');
+      return false;
+    }
+
+    try {
+      if (dom.btnValidateCustomComponent) dom.btnValidateCustomComponent.textContent = '⏳ Testing...';
+      const res = await fetch('/api/flowsheet/builder/custom_components/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code }),
+      });
+      const data = await res.json();
+      if (dom.btnValidateCustomComponent) dom.btnValidateCustomComponent.textContent = '🧪 Validate Code';
+
+      if (data.valid) {
+        showCustomStatusBox(
+          true,
+          `Component '${data.block_type}' passed verification!`,
+          `Ports: ${data.in_ports_count} IN / ${data.out_ports_count} OUT • Parameters: ${Object.keys(data.parameters || {}).length} • Category: ${data.category} • Steady-state balance & dynamic step executed cleanly.`
+        );
+        if (showSuccessToast) showToast(`Verification passed for ${data.block_type}`, 'success');
+        return true;
+      } else {
+        showCustomStatusBox(false, 'Validation Failed', data.error || data.traceback || 'Unknown verification error');
+        showToast('Validation failed. See details below code editor.', 'error');
+        return false;
+      }
+    } catch (err) {
+      if (dom.btnValidateCustomComponent) dom.btnValidateCustomComponent.textContent = '🧪 Validate Code';
+      showCustomStatusBox(false, 'Validation Request Error', err.message);
+      return false;
+    }
+  }
+
+  async function saveCustomComponent() {
+    const code = dom.customCompCodeTextarea ? dom.customCompCodeTextarea.value : '';
+    if (!code || !code.trim()) {
+      showToast('Cannot save empty code', 'error');
+      return;
+    }
+
+    try {
+      if (dom.btnSaveCustomComponent) dom.btnSaveCustomComponent.textContent = '⏳ Saving & Registering...';
+      const res = await fetch('/api/flowsheet/builder/custom_components', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code }),
+      });
+      const data = await res.json();
+      if (dom.btnSaveCustomComponent) dom.btnSaveCustomComponent.textContent = '💾 Save & Auto-Register';
+
+      if (data.valid) {
+        showToast(`✨ Component '${data.block_type}' saved and auto-registered!`, 'success');
+        closeCustomComponentStudio();
+
+        // Refresh catalog and custom components list
+        const catRes = await fetch('/api/flowsheet/builder/components');
+        if (catRes.ok) {
+          state.catalog = await catRes.json();
+          renderPalette(state.catalog);
+        }
+        await loadCustomComponentsList();
+
+        // Highlight new component in palette
+        setTimeout(() => {
+          const card = document.querySelector(`.palette-block-card[data-block-type="${data.block_type}"]`);
+          if (card) {
+            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            card.style.outline = '2px solid #38BDF8';
+            card.style.boxShadow = '0 0 15px rgba(56, 189, 248, 0.5)';
+            setTimeout(() => {
+              card.style.outline = '';
+              card.style.boxShadow = '';
+            }, 3000);
+          }
+        }, 150);
+      } else {
+        showCustomStatusBox(false, 'Failed to Register Component', data.error || 'Unknown error');
+        showToast('Could not register component. Check error output.', 'error');
+      }
+    } catch (err) {
+      if (dom.btnSaveCustomComponent) dom.btnSaveCustomComponent.textContent = '💾 Save & Auto-Register';
+      showCustomStatusBox(false, 'Network / Server Error', err.message);
+    }
+  }
+
+  async function deleteCustomComponentAction() {
+    const bType = dom.customPreviewBlockType ? dom.customPreviewBlockType.textContent : '';
+    if (!bType) return;
+    if (!confirm(`Are you sure you want to permanently delete custom component '${bType}'?`)) return;
+
+    try {
+      const res = await fetch('/api/flowsheet/builder/custom_components/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ block_type: bType }),
+      });
+      const data = await res.json();
+      if (data.status === 'success') {
+        showToast(`Deleted custom component '${bType}'`, 'info');
+        closeCustomComponentStudio();
+        // Refresh catalog
+        const catRes = await fetch('/api/flowsheet/builder/components');
+        if (catRes.ok) {
+          state.catalog = await catRes.json();
+          renderPalette(state.catalog);
+        }
+        await loadCustomComponentsList();
+      } else {
+        showToast(`Could not delete component: ${data.message || 'Not found'}`, 'error');
+      }
+    } catch (err) {
+      showToast(`Error deleting component: ${err.message}`, 'error');
+    }
+  }
+
+  async function rescanCustomFolderAction() {
+    try {
+      if (dom.btnRescanCustomFolder) dom.btnRescanCustomFolder.textContent = '⏳ Rescanning...';
+      const res = await fetch('/api/flowsheet/builder/custom_components/reload', {
+        method: 'POST',
+      });
+      const data = await res.json();
+      if (dom.btnRescanCustomFolder) dom.btnRescanCustomFolder.textContent = '🔄 Rescan Disk';
+
+      if (data.status === 'success') {
+        showToast(`Rescan complete: ${data.count} custom components active`, 'success');
+        const catRes = await fetch('/api/flowsheet/builder/components');
+        if (catRes.ok) {
+          state.catalog = await catRes.json();
+          renderPalette(state.catalog);
+        }
+        await loadCustomComponentsList();
+      } else {
+        showToast('Rescan encountered an issue', 'error');
+      }
+    } catch (err) {
+      if (dom.btnRescanCustomFolder) dom.btnRescanCustomFolder.textContent = '🔄 Rescan Disk';
+      showToast(`Rescan error: ${err.message}`, 'error');
+    }
+  }
+
+  function downloadCustomPyAction() {
+    const code = dom.customCompCodeTextarea ? dom.customCompCodeTextarea.value : '';
+    const bType = dom.customPreviewBlockType ? dom.customPreviewBlockType.textContent : 'custom_block';
+    const cleanSnake = bType.replace(/([A-Z])/g, '_$1').toLowerCase().replace(/^_/, '');
+    const filename = `${cleanSnake}.py`;
+
+    const blob = new Blob([code], { type: 'text/x-python;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast(`Downloaded ${filename}`, 'info');
   }
 
   // =========================================================================
@@ -771,7 +1246,6 @@
     const catalogItem = state.catalog.find(c => c.type === blockType);
     if (!catalogItem) return;
 
-    // Distinctive, meaningful prefix per equipment type
     const TYPE_PREFIXES = {
       'GravimetricFeeder': 'FEEDER',
       'FuelFeeder': 'FUEL_DOSER',
@@ -787,7 +1261,29 @@
       'GrateCooler': 'COOLER',
       'IDFan': 'ID_FAN',
       'StreamSensor': 'SENSOR',
-      'SiloStorage': 'SILO'
+      'SiloStorage': 'SILO',
+      // Control & Logic Blocks
+      'BinaryConstant': 'BCON',
+      'AnalogConstant': 'ACON',
+      'LogicGate': 'GATE',
+      'RSFlipFlop': 'LATCH',
+      'TimerDelay': 'TMR',
+      'EdgeDetector': 'EDGE',
+      'InterlockMatrix': 'ILOCK',
+      'PIDController': 'PID',
+      'LeadLagFilter': 'FLTR',
+      'AnalogComparator': 'CMP',
+      'SignalSelector': 'SEL',
+      'RateLimiter': 'RLIM',
+      'AnalogMathBlock': 'MATH',
+      'AnalogAdder': 'ADD',
+      'AnalogSubtractor': 'SUB',
+      'AnalogMultiplier': 'MUL',
+      'AnalogEquationBlock': 'EQN',
+      'AnalogSelect': 'ASEL',
+      'ProcessTransmitter': 'XMTR',
+      'ControlValveActuator': 'VALVE',
+      'TemplateComponent': 'CUSTOM'
     };
     const basePrefix = TYPE_PREFIXES[blockType] || blockType.toUpperCase().replace(/[^A-Z0-9]/g, '_');
 
@@ -865,8 +1361,31 @@
     );
 
     const streamId = state.streamCounter++;
-    const phase = srcPort.phase || dstPort.phase || 'SOLID';
-    const streamName = `${srcBlock.name} → ${dstBlock.name}`;
+    const phase = (srcPort.phase || dstPort.phase || 'SOLID').toUpperCase();
+    const streamName = `${srcBlock.name || srcBlock.id} → ${dstBlock.name || dstBlock.id}`;
+
+    let initialBinaryState = false;
+    let initialSignalVal = 0.0;
+    if (srcBlock.type === 'BinaryConstant') {
+      const constSt = srcBlock.parameters?.constant_state !== undefined ? Boolean(srcBlock.parameters.constant_state) : true;
+      initialBinaryState = (srcPortName === 'out_not_state') ? !constSt : constSt;
+      initialSignalVal = initialBinaryState ? 1.0 : 0.0;
+    } else if (srcBlock.type === 'AnalogConstant') {
+      initialSignalVal = srcBlock.parameters?.constant_value !== undefined ? Number(srcBlock.parameters.constant_value) : 100.0;
+    } else if (srcBlock.type === 'LogicGate' && srcBlock.state?.output_q !== undefined) {
+      initialBinaryState = (srcPortName === 'out_not_q') ? !srcBlock.state.output_q : srcBlock.state.output_q;
+      initialSignalVal = initialBinaryState ? 1.0 : 0.0;
+    } else if (srcBlock.type === 'AnalogAdder') {
+      initialSignalVal = srcBlock.state?.output_sum !== undefined ? Number(srcBlock.state.output_sum) : 0.0;
+    } else if (srcBlock.type === 'AnalogSubtractor') {
+      initialSignalVal = srcBlock.state?.output_diff !== undefined ? Number(srcBlock.state.output_diff) : 0.0;
+    } else if (srcBlock.type === 'AnalogMultiplier') {
+      initialSignalVal = srcBlock.state?.output_prod !== undefined ? Number(srcBlock.state.output_prod) : 0.0;
+    } else if (srcBlock.type === 'AnalogEquationBlock') {
+      initialSignalVal = srcBlock.state?.output_val !== undefined ? Number(srcBlock.state.output_val) : 0.0;
+    } else if (srcBlock.type === 'AnalogSelect') {
+      initialSignalVal = srcBlock.state?.output_val !== undefined ? Number(srcBlock.state.output_val) : 0.0;
+    }
 
     const newConnection = {
       stream_id: streamId,
@@ -879,6 +1398,8 @@
       pressure_mbar: 0.0,
       enthalpy_gjh: 0.0,
       composition: {},
+      signal_value: initialSignalVal,
+      binary_state: initialBinaryState,
     };
 
     state.graph.connections.push(newConnection);
@@ -886,6 +1407,8 @@
       srcPort.connected_stream_id = streamId;
     }
     dstPort.connected_stream_id = streamId;
+
+    propagateClientLogicSignals();
 
     selectStream(streamId);
     renderGraph();
@@ -909,10 +1432,423 @@
     }
 
     state.graph.connections = state.graph.connections.filter(c => c.stream_id !== streamId);
+    propagateClientLogicSignals();
     state.selectedStreamId = null;
     renderGraph();
     renderGlobalInspector();
     showToast(`Stream ${streamId} disconnected`, 'info');
+  }
+
+  // Safe client-side math formula evaluator for AnalogEquationBlock
+  function evalClientMathEquation(expr, vars) {
+    if (!expr || typeof expr !== 'string') return 0.0;
+    const cleanExpr = expr.trim();
+    if (!cleanExpr) return 0.0;
+    // Whitelist check: numbers, letters, whitespace, operators, parens, commas, dots
+    if (!/^[0-9a-zA-Z_\s\+\-\*\/\^\(\)\,\.\%]+$/.test(cleanExpr)) return 0.0;
+    try {
+      const sanitized = cleanExpr.replace(/\^/g, '**');
+      const vA = Number(vars?.A || 0);
+      const vB = Number(vars?.B || 0);
+      const vC = Number(vars?.C || 0);
+      const vD = Number(vars?.D || 0);
+
+      const fn = new Function(
+        'A', 'B', 'C', 'D', 'a', 'b', 'c', 'd',
+        'sqrt', 'exp', 'log', 'sin', 'cos', 'tan', 'abs', 'min', 'max', 'pow', 'PI', 'E',
+        `try { return Number(${sanitized}); } catch(e) { return 0.0; }`
+      );
+      const res = fn(
+        vA, vB, vC, vD, vA, vB, vC, vD,
+        Math.sqrt, Math.exp, Math.log, Math.sin, Math.cos, Math.tan, Math.abs, Math.min, Math.max, Math.pow, Math.PI, Math.E
+      );
+      return (isNaN(res) || !isFinite(res)) ? 0.0 : res;
+    } catch (err) {
+      return 0.0;
+    }
+  }
+
+  // Real-time iterative signal and boolean state propagation on canvas
+  function propagateClientLogicSignals() {
+    if (!state.graph || !Array.isArray(state.graph.components)) return;
+
+    for (let iter = 0; iter < 4; iter++) {
+      let anyChanged = false;
+
+      (state.graph.components || []).forEach(block => {
+        if (!block || !block.type) return;
+
+        // 1. BinaryConstant
+        if (block.type === 'BinaryConstant') {
+          const st = block.parameters?.constant_state !== undefined ? Boolean(block.parameters.constant_state) : true;
+          if (!block.state) block.state = {};
+          block.state.constant_state = st;
+          block.state.output_state = st;
+          block.state.output_not_state = !st;
+
+          (state.graph.connections || []).forEach(conn => {
+            if (conn.source && conn.source.block === block.id) {
+              const prev = conn.binary_state;
+              conn.mass_flow_tph = 0.0;
+              conn.phase = 'BINARY';
+              if (conn.source.port === 'out_not_state') {
+                conn.binary_state = !st;
+                conn.signal_value = !st ? 1.0 : 0.0;
+              } else {
+                conn.binary_state = st;
+                conn.signal_value = st ? 1.0 : 0.0;
+              }
+              if (conn.binary_state !== prev) anyChanged = true;
+            }
+          });
+        }
+
+        // 2. AnalogConstant
+        else if (block.type === 'AnalogConstant') {
+          const val = block.parameters?.constant_value !== undefined ? Number(block.parameters.constant_value) : 100.0;
+          if (!block.state) block.state = {};
+          block.state.constant_value = val;
+          block.state.output_signal = val;
+
+          (state.graph.connections || []).forEach(conn => {
+            if (conn.source && conn.source.block === block.id) {
+              conn.mass_flow_tph = 0.0;
+              conn.phase = 'SIGNAL';
+              conn.signal_value = val;
+            }
+          });
+        }
+
+        // 3. LogicGate
+        else if (block.type === 'LogicGate') {
+          const inConns = (state.graph.connections || []).filter(c => c.target && c.target.block === block.id);
+          const inAConn = inConns.find(c => c.target.port === 'in_a');
+          const inBConn = inConns.find(c => c.target.port === 'in_b');
+          const inCConn = inConns.find(c => c.target.port === 'in_c');
+
+          const a = inAConn ? Boolean(inAConn.binary_state) : false;
+          const b = inBConn ? Boolean(inBConn.binary_state) : false;
+          const c = inCConn ? Boolean(inCConn.binary_state) : false;
+          const gate = String(block.parameters?.gate_type || 'AND').toUpperCase();
+
+          let q = false;
+          if (gate === 'OR') {
+            q = a || b || (inCConn ? c : false);
+          } else if (gate === 'XOR') {
+            q = (a !== b);
+          } else if (gate === 'NAND') {
+            q = !(a && (inBConn ? b : true) && (inCConn ? c : true));
+          } else if (gate === 'NOR') {
+            q = !(a || b || (inCConn ? c : false));
+          } else if (gate === 'NOT') {
+            q = !a;
+          } else {
+            // Default AND
+            q = a && (inBConn ? b : true) && (inCConn ? c : true);
+          }
+
+          if (!block.state) block.state = {};
+          const prevQ = block.state.output_q;
+          block.state.in_a = a;
+          block.state.in_b = b;
+          block.state.in_c = c;
+          block.state.output_q = q;
+          block.state.output_not_q = !q;
+          if (prevQ !== q) anyChanged = true;
+
+          (state.graph.connections || []).forEach(conn => {
+            if (conn.source && conn.source.block === block.id) {
+              conn.mass_flow_tph = 0.0;
+              conn.phase = 'BINARY';
+              if (conn.source.port === 'out_not_q') {
+                conn.binary_state = !q;
+                conn.signal_value = !q ? 1.0 : 0.0;
+              } else {
+                conn.binary_state = q;
+                conn.signal_value = q ? 1.0 : 0.0;
+              }
+            }
+          });
+        }
+
+        // 4. RSFlipFlop
+        else if (block.type === 'RSFlipFlop') {
+          const inConns = (state.graph.connections || []).filter(c => c.target && c.target.block === block.id);
+          const setConn = inConns.find(c => c.target.port === 'set');
+          const resetConn = inConns.find(c => c.target.port === 'reset');
+          const s = setConn ? Boolean(setConn.binary_state) : false;
+          const r = resetConn ? Boolean(resetConn.binary_state) : false;
+          const prio = String(block.parameters?.priority || 'RESET_DOMINANT').toUpperCase();
+
+          if (!block.state) block.state = {};
+          let curQ = block.state.latch_q !== undefined ? Boolean(block.state.latch_q) : Boolean(block.parameters?.initial_state);
+          if (prio === 'SET_DOMINANT') {
+            if (s) curQ = true;
+            else if (r) curQ = false;
+          } else {
+            if (r) curQ = false;
+            else if (s) curQ = true;
+          }
+          block.state.latch_q = curQ;
+          block.state.latch_not_q = !curQ;
+
+          (state.graph.connections || []).forEach(conn => {
+            if (conn.source && conn.source.block === block.id) {
+              conn.mass_flow_tph = 0.0;
+              conn.phase = 'BINARY';
+              if (conn.source.port === 'out_not_q') {
+                conn.binary_state = !curQ;
+                conn.signal_value = !curQ ? 1.0 : 0.0;
+              } else {
+                conn.binary_state = curQ;
+                conn.signal_value = curQ ? 1.0 : 0.0;
+              }
+            }
+          });
+        }
+
+        // 5. AnalogComparator
+        else if (block.type === 'AnalogComparator') {
+          const inConns = (state.graph.connections || []).filter(c => c.target && c.target.block === block.id);
+          const pvConn = inConns.find(c => c.target.port === 'in_pv');
+          const spConn = inConns.find(c => c.target.port === 'in_sp');
+          const pv = pvConn ? Number(pvConn.signal_value || 0) : 0.0;
+          const sp = spConn ? Number(spConn.signal_value || 0) : Number(block.parameters?.threshold_sp || 0.0);
+          const mode = String(block.parameters?.comparison_mode || 'GREATER_THAN').toUpperCase();
+
+          let tripped = false;
+          if (mode === 'LESS_THAN') tripped = (pv < sp);
+          else if (mode === 'EQUAL') tripped = (Math.abs(pv - sp) < 0.001);
+          else tripped = (pv > sp);
+
+          if (!block.state) block.state = {};
+          block.state.is_tripped = tripped;
+          block.state.input_value = pv;
+
+          (state.graph.connections || []).forEach(conn => {
+            if (conn.source && conn.source.block === block.id) {
+              conn.mass_flow_tph = 0.0;
+              conn.phase = 'BINARY';
+              if (conn.source.port === 'out_low') {
+                conn.binary_state = !tripped;
+                conn.signal_value = !tripped ? 1.0 : 0.0;
+              } else {
+                conn.binary_state = tripped;
+                conn.signal_value = tripped ? 1.0 : 0.0;
+              }
+            }
+          });
+        }
+
+        // 6. AnalogAdder
+        else if (block.type === 'AnalogAdder') {
+          const inConns = (state.graph.connections || []).filter(c => c.target && c.target.block === block.id);
+          const i1 = inConns.find(c => c.target.port === 'in_1');
+          const i2 = inConns.find(c => c.target.port === 'in_2');
+          const i3 = inConns.find(c => c.target.port === 'in_3');
+          const i4 = inConns.find(c => c.target.port === 'in_4');
+
+          const v1 = i1 ? Number(i1.signal_value || 0) : 0.0;
+          const v2 = i2 ? Number(i2.signal_value || 0) : 0.0;
+          const v3 = i3 ? Number(i3.signal_value || 0) : 0.0;
+          const v4 = i4 ? Number(i4.signal_value || 0) : 0.0;
+
+          const k1 = block.parameters?.k1 !== undefined ? Number(block.parameters.k1) : 1.0;
+          const k2 = block.parameters?.k2 !== undefined ? Number(block.parameters.k2) : 1.0;
+          const k3 = block.parameters?.k3 !== undefined ? Number(block.parameters.k3) : 1.0;
+          const k4 = block.parameters?.k4 !== undefined ? Number(block.parameters.k4) : 1.0;
+          const bias = block.parameters?.bias !== undefined ? Number(block.parameters.bias) : 0.0;
+          const cMin = block.parameters?.clamp_min !== undefined ? Number(block.parameters.clamp_min) : -1000000.0;
+          const cMax = block.parameters?.clamp_max !== undefined ? Number(block.parameters.clamp_max) : 1000000.0;
+
+          const raw = (k1 * v1) + (k2 * v2) + (k3 * v3) + (k4 * v4) + bias;
+          const sum = Math.max(cMin, Math.min(cMax, raw));
+
+          if (!block.state) block.state = {};
+          const prevSum = block.state.output_sum;
+          block.state.in_1 = v1;
+          block.state.in_2 = v2;
+          block.state.in_3 = v3;
+          block.state.in_4 = v4;
+          block.state.output_sum = sum;
+          if (prevSum === undefined || Math.abs(prevSum - sum) > 1e-4) anyChanged = true;
+
+          (state.graph.connections || []).forEach(conn => {
+            if (conn.source && conn.source.block === block.id && conn.source.port === 'out_sum') {
+              conn.mass_flow_tph = 0.0;
+              conn.phase = 'SIGNAL';
+              conn.signal_value = sum;
+            }
+          });
+        }
+
+        // 7. AnalogSubtractor
+        else if (block.type === 'AnalogSubtractor') {
+          const inConns = (state.graph.connections || []).filter(c => c.target && c.target.block === block.id);
+          const iPos = inConns.find(c => c.target.port === 'in_pos');
+          const iNeg = inConns.find(c => c.target.port === 'in_neg');
+
+          const vp = iPos ? Number(iPos.signal_value || 0) : 0.0;
+          const vn = iNeg ? Number(iNeg.signal_value || 0) : 0.0;
+
+          const gp = block.parameters?.gain_pos !== undefined ? Number(block.parameters.gain_pos) : 1.0;
+          const gn = block.parameters?.gain_neg !== undefined ? Number(block.parameters.gain_neg) : 1.0;
+          const bias = block.parameters?.bias !== undefined ? Number(block.parameters.bias) : 0.0;
+          const cMin = block.parameters?.clamp_min !== undefined ? Number(block.parameters.clamp_min) : -1000000.0;
+          const cMax = block.parameters?.clamp_max !== undefined ? Number(block.parameters.clamp_max) : 1000000.0;
+
+          const raw = (gp * vp) - (gn * vn) + bias;
+          const diff = Math.max(cMin, Math.min(cMax, raw));
+
+          if (!block.state) block.state = {};
+          const prevDiff = block.state.output_diff;
+          block.state.in_pos = vp;
+          block.state.in_neg = vn;
+          block.state.output_diff = diff;
+          if (prevDiff === undefined || Math.abs(prevDiff - diff) > 1e-4) anyChanged = true;
+
+          (state.graph.connections || []).forEach(conn => {
+            if (conn.source && conn.source.block === block.id && conn.source.port === 'out_diff') {
+              conn.mass_flow_tph = 0.0;
+              conn.phase = 'SIGNAL';
+              conn.signal_value = diff;
+            }
+          });
+        }
+
+        // 8. AnalogMultiplier
+        else if (block.type === 'AnalogMultiplier') {
+          const inConns = (state.graph.connections || []).filter(c => c.target && c.target.block === block.id);
+          const iA = inConns.find(c => c.target.port === 'in_a');
+          const iB = inConns.find(c => c.target.port === 'in_b');
+          const iDiv = inConns.find(c => c.target.port === 'in_div');
+
+          const va = iA ? Number(iA.signal_value || 0) : 1.0;
+          const vb = iB ? Number(iB.signal_value || 0) : 1.0;
+          let vdiv = iDiv ? Number(iDiv.signal_value || 0) : 1.0;
+          if (Math.abs(vdiv) < 1e-9) vdiv = vdiv >= 0 ? 1e-9 : -1e-9;
+
+          const gain = block.parameters?.gain !== undefined ? Number(block.parameters.gain) : 1.0;
+          const bias = block.parameters?.bias !== undefined ? Number(block.parameters.bias) : 0.0;
+          const cMin = block.parameters?.clamp_min !== undefined ? Number(block.parameters.clamp_min) : -1000000.0;
+          const cMax = block.parameters?.clamp_max !== undefined ? Number(block.parameters.clamp_max) : 1000000.0;
+
+          const raw = gain * (va * vb / vdiv) + bias;
+          const prod = Math.max(cMin, Math.min(cMax, raw));
+
+          if (!block.state) block.state = {};
+          const prevProd = block.state.output_prod;
+          block.state.in_a = va;
+          block.state.in_b = vb;
+          block.state.in_div = vdiv;
+          block.state.output_prod = prod;
+          if (prevProd === undefined || Math.abs(prevProd - prod) > 1e-4) anyChanged = true;
+
+          (state.graph.connections || []).forEach(conn => {
+            if (conn.source && conn.source.block === block.id && conn.source.port === 'out_prod') {
+              conn.mass_flow_tph = 0.0;
+              conn.phase = 'SIGNAL';
+              conn.signal_value = prod;
+            }
+          });
+        }
+
+        // 9. AnalogEquationBlock
+        else if (block.type === 'AnalogEquationBlock') {
+          const inConns = (state.graph.connections || []).filter(c => c.target && c.target.block === block.id);
+          const iA = inConns.find(c => c.target.port === 'in_a');
+          const iB = inConns.find(c => c.target.port === 'in_b');
+          const iC = inConns.find(c => c.target.port === 'in_c');
+          const iD = inConns.find(c => c.target.port === 'in_d');
+
+          const va = iA ? Number(iA.signal_value || 0) : 0.0;
+          const vb = iB ? Number(iB.signal_value || 0) : 0.0;
+          const vc = iC ? Number(iC.signal_value || 0) : 0.0;
+          const vd = iD ? Number(iD.signal_value || 0) : 0.0;
+
+          const eq = String(block.parameters?.equation || 'A + B');
+          const cMin = block.parameters?.clamp_min !== undefined ? Number(block.parameters.clamp_min) : -1000000.0;
+          const cMax = block.parameters?.clamp_max !== undefined ? Number(block.parameters.clamp_max) : 1000000.0;
+
+          const raw = evalClientMathEquation(eq, { A: va, B: vb, C: vc, D: vd });
+          const res = Math.max(cMin, Math.min(cMax, raw));
+
+          if (!block.state) block.state = {};
+          const prevVal = block.state.output_val;
+          block.state.in_a = va;
+          block.state.in_b = vb;
+          block.state.in_c = vc;
+          block.state.in_d = vd;
+          block.state.equation = eq;
+          block.state.output_val = res;
+          if (prevVal === undefined || Math.abs(prevVal - res) > 1e-4) anyChanged = true;
+
+          (state.graph.connections || []).forEach(conn => {
+            if (conn.source && conn.source.block === block.id && conn.source.port === 'out_val') {
+              conn.mass_flow_tph = 0.0;
+              conn.phase = 'SIGNAL';
+              conn.signal_value = res;
+            }
+          });
+        }
+
+        // 10. AnalogSelect (2:1 Analog Multiplexer / Switch)
+        else if (block.type === 'AnalogSelect') {
+          const inConns = (state.graph.connections || []).filter(c => c.target && c.target.block === block.id);
+          const iA1 = inConns.find(c => c.target.port === 'in_analog1');
+          const iA2 = inConns.find(c => c.target.port === 'in_analog2');
+          const iSel = inConns.find(c => c.target.port === 'in_select');
+
+          const va1 = iA1 ? Number(iA1.signal_value || 0) : 0.0;
+          const va2 = iA2 ? Number(iA2.signal_value || 0) : 0.0;
+
+          let selActive = false;
+          if (iSel) {
+            if (iSel.phase === 'BINARY') {
+              selActive = Boolean(iSel.binary_state);
+            } else {
+              selActive = Number(iSel.signal_value || 0) >= 0.5;
+            }
+          } else {
+            selActive = Boolean(block.parameters?.default_select);
+          }
+
+          if (block.parameters?.invert_select) {
+            selActive = !selActive;
+          }
+
+          const res = selActive ? va2 : va1;
+          const ch = selActive ? 2 : 1;
+
+          if (!block.state) block.state = {};
+          const prevVal = block.state.output_val;
+          block.state.analog_1 = va1;
+          block.state.analog_2 = va2;
+          block.state.select_active = selActive;
+          block.state.selected_channel = ch;
+          block.state.output_val = res;
+          if (prevVal === undefined || Math.abs(prevVal - res) > 1e-4) anyChanged = true;
+
+          (state.graph.connections || []).forEach(conn => {
+            if (conn.source && conn.source.block === block.id && conn.source.port === 'out_selected') {
+              conn.mass_flow_tph = 0.0;
+              conn.phase = 'SIGNAL';
+              conn.signal_value = res;
+            }
+          });
+        }
+
+        // 11. Generic safeguard for all BINARY / SIGNAL connections: force mass flow to 0
+        (state.graph.connections || []).forEach(conn => {
+          if (conn.phase === 'BINARY' || conn.phase === 'SIGNAL') {
+            conn.mass_flow_tph = 0.0;
+            conn.enthalpy_gjh = 0.0;
+          }
+        });
+      });
+
+      if (!anyChanged) break;
+    }
   }
 
   // =========================================================================
@@ -921,6 +1857,8 @@
 
   function renderGraph() {
     if (!dom.blocksLayer || !dom.wiresLayer) return;
+
+    propagateClientLogicSignals();
 
     dom.blocksLayer.innerHTML = '';
     dom.wiresLayer.innerHTML = '';
@@ -945,15 +1883,22 @@
   }
 
   function getBlockDimensions(block) {
-    if (block.type === 'RotaryKiln') return { width: 185, height: 95 };
-    if (block.type === 'GrateCooler') return { width: 155, height: 90 };
-    if (block.type === 'CalcinerReactor') return { width: 145, height: 95 };
-    if (block.type === 'CycloneStage') return { width: 135, height: 85 };
-    if (block.type === 'IDFan') return { width: 125, height: 75 };
-    if (block.type === 'FuelMixer') return { width: 145, height: 95 };
-    if (block.type === 'AirMixer') return { width: 145, height: 95 };
-    if (block.type === 'GasMixer') return { width: 145, height: 95 };
-    return { width: 130, height: 80 };
+    const portsList = block.ports ? (Array.isArray(block.ports) ? block.ports : Object.values(block.ports)) : [];
+    const inCount = portsList.filter(p => p && p.direction === 'IN').length;
+    const outCount = portsList.filter(p => p && p.direction === 'OUT').length;
+    const maxPorts = Math.max(inCount, outCount, 1);
+
+    let width = 150;
+    if (['RotaryKiln'].includes(block.type)) width = 190;
+    else if (['GrateCooler', 'CalcinerReactor'].includes(block.type)) width = 165;
+    else if (['InterlockMatrix', 'AnalogComparator', 'ControlValveActuator', 'ProcessTransmitter', 'AnalogConstant', 'BinaryConstant', 'LogicGate', 'RSFlipFlop', 'TimerDelay', 'EdgeDetector', 'AnalogAdder', 'AnalogSubtractor', 'AnalogMultiplier', 'AnalogEquationBlock', 'AnalogSelect'].includes(block.type)) width = 160;
+    else if (['FuelMixer', 'AirMixer', 'GasMixer', 'PIDController', 'AnalogMathBlock', 'LeadLagFilter', 'SignalSelector', 'RateLimiter'].includes(block.type)) width = 155;
+
+    const minHeight = 82;
+    const computedHeight = 28 + (maxPorts * 22) + 18;
+    const height = Math.max(minHeight, computedHeight);
+
+    return { width, height };
   }
 
   function getPortPosition(block, portName, portDirection) {
@@ -965,14 +1910,20 @@
     const x = block.position.x;
     const y = block.position.y;
 
+    const headerH = 26;
+    const footerH = 20;
+    const usableH = dims.height - headerH - footerH;
+
     if (portDirection === 'IN') {
       const idx = inPorts.findIndex(p => p.name === portName);
-      const spacing = dims.height / (inPorts.length + 1);
-      return { x: x, y: y + spacing * (idx + 1) };
+      if (idx === -1) return { x, y: y + dims.height / 2 };
+      const spacing = usableH / (inPorts.length + 1);
+      return { x: x, y: y + headerH + spacing * (idx + 1) };
     } else {
       const idx = outPorts.findIndex(p => p.name === portName);
-      const spacing = dims.height / (outPorts.length + 1);
-      return { x: x + dims.width, y: y + spacing * (idx + 1) };
+      if (idx === -1) return { x: x + dims.width, y: y + dims.height / 2 };
+      const spacing = usableH / (outPorts.length + 1);
+      return { x: x + dims.width, y: y + headerH + spacing * (idx + 1) };
     }
   }
 
@@ -999,33 +1950,79 @@
     header.setAttribute('height', 24);
     g.appendChild(header);
 
-    // Icon + Block ID
-    const title = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    title.className.baseVal = 'builder-node-title';
-    title.setAttribute('x', 8);
-    title.setAttribute('y', 16);
-    title.textContent = `${getBlockIcon(block.type)} ${block.name}`;
-    g.appendChild(title);
+    // Tag pill layout
+    const tagText = block.id || '';
+    const tagPillW = Math.max(34, Math.min(80, tagText.length * 6.6 + 8));
+    const tagPillX = dims.width - tagPillW - 5;
 
-    // Tag / ID
+    // Header Tag Pill Background
+    const tagBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    tagBg.setAttribute('x', tagPillX);
+    tagBg.setAttribute('y', 4);
+    tagBg.setAttribute('width', tagPillW);
+    tagBg.setAttribute('height', 16);
+    tagBg.setAttribute('rx', 3);
+    tagBg.setAttribute('fill', 'rgba(15, 23, 42, 0.7)');
+    tagBg.setAttribute('stroke', '#334155');
+    tagBg.setAttribute('stroke-width', '1');
+    g.appendChild(tagBg);
+
+    // Tag / ID inside pill
     const tag = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     tag.className.baseVal = 'builder-node-id';
-    tag.setAttribute('x', dims.width - 8);
-    tag.setAttribute('y', 16);
-    tag.setAttribute('text-anchor', 'end');
-    tag.textContent = block.id;
+    tag.setAttribute('x', tagPillX + tagPillW / 2);
+    tag.setAttribute('y', 15);
+    tag.setAttribute('text-anchor', 'middle');
+    tag.textContent = tagText;
     g.appendChild(tag);
+
+    // Clip path for title to prevent collision with right-aligned ID pill
+    const clipId = `clip-${block.id}`;
+    const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+    const clipPath = document.createElementNS('http://www.w3.org/2000/svg', 'clipPath');
+    clipPath.setAttribute('id', clipId);
+    const clipRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    clipRect.setAttribute('x', '0');
+    clipRect.setAttribute('y', '0');
+    clipRect.setAttribute('width', Math.max(30, tagPillX - 10));
+    clipRect.setAttribute('height', '24');
+    clipPath.appendChild(clipRect);
+    defs.appendChild(clipPath);
+    g.appendChild(defs);
+
+    // Icon + Block Display Name (with clip path)
+    const title = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    title.className.baseVal = 'builder-node-title';
+    title.setAttribute('x', 7);
+    title.setAttribute('y', 16);
+    title.setAttribute('clip-path', `url(#${clipId})`);
+    title.textContent = `${getBlockIcon(block.type)} ${block.name || formatBlockDisplayName(block.type)}`;
+    g.appendChild(title);
+
+    // Center Display for Constant blocks
+    if (block.type === 'AnalogConstant' || block.type === 'BinaryConstant') {
+      const constBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      constBg.setAttribute('x', 14);
+      constBg.setAttribute('y', 30);
+      constBg.setAttribute('width', dims.width - 28);
+      constBg.setAttribute('height', dims.height - 48);
+      constBg.setAttribute('rx', 4);
+      constBg.setAttribute('fill', 'rgba(15, 23, 42, 0.6)');
+      constBg.setAttribute('stroke', 'rgba(56, 189, 248, 0.25)');
+      constBg.setAttribute('stroke-width', '1');
+      g.appendChild(constBg);
+    }
 
     // Dynamic Telemetry Readout
     const telem = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     telem.className.baseVal = 'builder-node-telemetry';
     telem.setAttribute('x', dims.width / 2);
-    telem.setAttribute('y', dims.height - 12);
+    telem.setAttribute('y', dims.height - 7);
     telem.setAttribute('text-anchor', 'middle');
     telem.textContent = getBlockTelemetrySummary(block);
     g.appendChild(telem);
 
-    // Ports
+    // Ports & Port Labels
     const nodePorts = block.ports ? (Array.isArray(block.ports) ? block.ports : Object.values(block.ports)) : [];
     nodePorts.forEach((port) => {
       if (!port) return;
@@ -1040,11 +2037,28 @@
       portG.dataset.blockId = block.id;
       portG.dataset.phase = port.phase;
 
+      // Port Anchor Circle
       const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
       circle.className.baseVal = `port-circle phase-${(port.phase || 'solid').toLowerCase()}`;
       circle.setAttribute('cx', relX);
       circle.setAttribute('cy', relY);
       portG.appendChild(circle);
+
+      // Port Label inside the block body
+      const portLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      if (port.direction === 'IN') {
+        portLabel.className.baseVal = 'port-label port-label-in';
+        portLabel.setAttribute('x', relX + 9);
+        portLabel.setAttribute('y', relY + 3);
+        portLabel.setAttribute('text-anchor', 'start');
+      } else {
+        portLabel.className.baseVal = 'port-label port-label-out';
+        portLabel.setAttribute('x', relX - 9);
+        portLabel.setAttribute('y', relY + 3);
+        portLabel.setAttribute('text-anchor', 'end');
+      }
+      portLabel.textContent = port.name;
+      portG.appendChild(portLabel);
 
       // Port Title tooltip
       const titleEl = document.createElementNS('http://www.w3.org/2000/svg', 'title');
@@ -1136,6 +2150,103 @@
       const fl = (block.state.actual_flow_nm3h || 268500.0) / 1000.0;
       return `${kw.toFixed(0)} kW | ${fl.toFixed(0)}k Nm³/h`;
     }
+    // Control / Analog Blocks Telemetry
+    if (block.type === 'PIDController') {
+      const mv = block.state?.mv_output !== undefined ? block.state.mv_output : (block.parameters?.initial_mv || 0.0);
+      const sp = block.state?.setpoint !== undefined ? block.state.setpoint : (block.parameters?.setpoint || 0.0);
+      const mode = block.parameters?.auto_mode !== false ? 'AUTO' : 'MAN';
+      return `[${mode}] MV ${Number(mv).toFixed(1)}% | SP ${Number(sp).toFixed(1)}`;
+    }
+    if (block.type === 'ProcessTransmitter') {
+      const sig = block.state?.signal_output !== undefined ? block.state.signal_output : 0.0;
+      const unit = block.parameters?.engineering_unit || '';
+      return `${Number(sig).toFixed(1)} ${unit}`.trim();
+    }
+    if (block.type === 'ControlValveActuator') {
+      const pos = block.state?.valve_position_pct !== undefined ? block.state.valve_position_pct : (block.parameters?.default_position_pct || 50.0);
+      return `Pos: ${Number(pos).toFixed(1)}%`;
+    }
+    if (block.type === 'AnalogComparator') {
+      const tripped = block.state?.is_tripped ? 'TRIP' : 'NORM';
+      const val = block.state?.input_value !== undefined ? block.state.input_value : 0.0;
+      return `${tripped} | IN:${Number(val).toFixed(1)}`;
+    }
+    if (block.type === 'SignalSelector') {
+      const sel = block.state?.selected_value !== undefined ? block.state.selected_value : 0.0;
+      const m = block.parameters?.selection_mode || 'AVERAGE';
+      return `${m}: ${Number(sel).toFixed(1)}`;
+    }
+    if (block.type === 'RateLimiter') {
+      const out = block.state?.current_output !== undefined ? block.state.current_output : 0.0;
+      return `OUT: ${Number(out).toFixed(1)}`;
+    }
+    if (block.type === 'AnalogMathBlock') {
+      const res = block.state?.result !== undefined ? block.state.result : 0.0;
+      const op = block.parameters?.operation || 'ADD';
+      return `${op} -> ${Number(res).toFixed(1)}`;
+    }
+    if (block.type === 'LeadLagFilter') {
+      const y = block.state?.filtered_output !== undefined ? block.state.filtered_output : 0.0;
+      return `Filtered: ${Number(y).toFixed(1)}`;
+    }
+    // Control / Binary Blocks Telemetry
+    if (block.type === 'LogicGate') {
+      const isQ = block.state?.output_q !== undefined ? block.state.output_q : (block.state?.output_state ?? false);
+      const q = isQ ? 'TRUE' : 'FALSE';
+      const gate = block.parameters?.gate_type || 'AND';
+      return `${gate} -> Q:${q}`;
+    }
+    if (block.type === 'TimerDelay') {
+      const q = block.state?.output_q ? 'TRUE' : 'FALSE';
+      const et = block.state?.elapsed_time_s !== undefined ? block.state.elapsed_time_s : 0.0;
+      const pt = block.parameters?.preset_time_s !== undefined ? block.parameters.preset_time_s : (block.parameters?.time_delay_s || 5.0);
+      return `Q:${q} | ${Number(et).toFixed(1)}/${Number(pt).toFixed(1)}s`;
+    }
+    if (block.type === 'RSFlipFlop') {
+      const isSet = block.state?.latch_q !== undefined ? block.state.latch_q : (block.state?.state_q ?? false);
+      const q = isSet ? 'SET' : 'RESET';
+      return `Latch: ${q}`;
+    }
+    if (block.type === 'EdgeDetector') {
+      const p = (block.state?.pulse_out || block.state?.pulse_output) ? 'PULSE!' : 'IDLE';
+      return `Edge: ${p}`;
+    }
+    if (block.type === 'InterlockMatrix') {
+      const perm = block.state?.permissive_ok ? 'PERMIT' : 'LOCK';
+      const trip = block.state?.trip_active ? 'TRIP!' : 'CLEAR';
+      return `${perm} | ${trip}`;
+    }
+    if (block.type === 'AnalogConstant') {
+      const val = block.parameters?.constant_value !== undefined ? block.parameters.constant_value : (block.state?.constant_value || 100.0);
+      const unit = block.parameters?.engineering_unit || '';
+      return `CONST: ${Number(val).toFixed(1)} ${unit}`.trim();
+    }
+    if (block.type === 'BinaryConstant') {
+      const st = block.parameters?.constant_state !== undefined ? block.parameters.constant_state : (block.state?.constant_state ?? true);
+      return `CONST: ${st ? 'TRUE' : 'FALSE'}`;
+    }
+    if (block.type === 'AnalogAdder') {
+      const sum = block.state?.output_sum !== undefined ? Number(block.state.output_sum).toFixed(1) : '0.0';
+      return `SUM: ${sum}`;
+    }
+    if (block.type === 'AnalogSubtractor') {
+      const diff = block.state?.output_diff !== undefined ? Number(block.state.output_diff).toFixed(1) : '0.0';
+      return `DIFF: ${diff}`;
+    }
+    if (block.type === 'AnalogMultiplier') {
+      const prod = block.state?.output_prod !== undefined ? Number(block.state.output_prod).toFixed(1) : '0.0';
+      return `PROD: ${prod}`;
+    }
+    if (block.type === 'AnalogEquationBlock') {
+      const res = block.state?.output_val !== undefined ? Number(block.state.output_val).toFixed(1) : '0.0';
+      const eq = block.parameters?.equation || 'A+B';
+      return `${eq} = ${res}`;
+    }
+    if (block.type === 'AnalogSelect') {
+      const ch = block.state?.selected_channel || 1;
+      const res = block.state?.output_val !== undefined ? Number(block.state.output_val).toFixed(1) : '0.0';
+      return `SEL: CH${ch} (${res})`;
+    }
     return '';
   }
 
@@ -1166,9 +2277,35 @@
     clickPath.style.cursor = 'pointer';
     g.appendChild(clickPath);
 
+    const phase = (conn.phase || 'SOLID').toUpperCase();
+    let badgeW = 68;
+    const badgeH = 18;
+    let badgeStr = '';
+    let badgeRectClass = 'stream-badge-rect';
+    let badgeTextClass = 'stream-badge-text';
+    let wirePhaseClass = `phase-${phase.toLowerCase()}`;
+
+    if (phase === 'BINARY') {
+      const isTrue = Boolean(conn.binary_state);
+      badgeStr = isTrue ? 'TRUE' : 'FALSE';
+      badgeW = 48;
+      wirePhaseClass += isTrue ? ' binary-high' : ' binary-low';
+      badgeRectClass += isTrue ? ' badge-binary-true' : ' badge-binary-false';
+      badgeTextClass += isTrue ? ' badge-binary-true' : ' badge-binary-false';
+    } else if (phase === 'SIGNAL') {
+      const sigVal = conn.signal_value !== undefined ? Number(conn.signal_value).toFixed(1) : '0.0';
+      badgeStr = `SIG: ${sigVal}`;
+      badgeW = 60;
+      badgeRectClass += ' badge-signal';
+      badgeTextClass += ' badge-signal';
+    } else {
+      badgeStr = conn.mass_flow_tph > 0 ? `${conn.mass_flow_tph.toFixed(1)} t/h` : `#${conn.stream_id}`;
+      badgeW = 68;
+    }
+
     // Visible Wire
     const wirePath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    wirePath.className.baseVal = `stream-wire-path phase-${(conn.phase || 'solid').toLowerCase()}`;
+    wirePath.className.baseVal = `stream-wire-path ${wirePhaseClass}`;
     wirePath.setAttribute('d', pathD);
     g.appendChild(wirePath);
 
@@ -1176,10 +2313,8 @@
     const midX = (p1.x + p2.x) / 2;
     const midY = (p1.y + p2.y) / 2;
 
-    const badgeW = 68;
-    const badgeH = 18;
     const badgeRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-    badgeRect.className.baseVal = 'stream-badge-rect';
+    badgeRect.className.baseVal = badgeRectClass;
     badgeRect.setAttribute('x', midX - badgeW / 2);
     badgeRect.setAttribute('y', midY - badgeH / 2);
     badgeRect.setAttribute('width', badgeW);
@@ -1187,11 +2322,10 @@
     g.appendChild(badgeRect);
 
     const badgeText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    badgeText.className.baseVal = 'stream-badge-text';
+    badgeText.className.baseVal = badgeTextClass;
     badgeText.setAttribute('x', midX);
     badgeText.setAttribute('y', midY);
-    const flowStr = conn.mass_flow_tph > 0 ? `${conn.mass_flow_tph.toFixed(1)} t/h` : `#${conn.stream_id}`;
-    badgeText.textContent = flowStr;
+    badgeText.textContent = badgeStr;
     g.appendChild(badgeText);
 
     // Wire Click Event
@@ -1761,6 +2895,11 @@
           block.state.actual_cooling_air_tph = val;
         }
 
+        if (['BinaryConstant', 'AnalogConstant', 'LogicGate', 'RSFlipFlop', 'TimerDelay', 'EdgeDetector', 'AnalogComparator', 'SignalSelector', 'RateLimiter', 'AnalogMathBlock', 'AnalogAdder', 'AnalogSubtractor', 'AnalogMultiplier', 'AnalogEquationBlock', 'AnalogSelect'].includes(block.type)) {
+          propagateClientLogicSignals();
+          renderGraph();
+        }
+
         // Notify server modular engine manager of parameter update and sync live solved telemetry
         fetch('/api/flowsheet/builder/param', {
           method: 'POST',
@@ -1833,29 +2972,75 @@
         </div>
       </div>
 
-      <div class="inspector-section">
-        <div class="inspector-section-title">THERMODYNAMIC PROPERTIES</div>
-        <div class="inspector-stat-grid">
-          <div class="inspector-stat-box">
-            <span class="lbl">MASS FLOW</span>
-            <span class="val cyan">${(conn.mass_flow_tph || 0).toFixed(2)} t/h</span>
-          </div>
-          <div class="inspector-stat-box">
-            <span class="lbl">TEMPERATURE</span>
-            <span class="val amber">${(conn.temperature_c || 25).toFixed(1)} °C</span>
-          </div>
-          <div class="inspector-stat-box">
-            <span class="lbl">PRESSURE / DRAFT</span>
-            <span class="val">${(conn.pressure_mbar || 0).toFixed(1)} mbar</span>
-          </div>
-          <div class="inspector-stat-box">
-            <span class="lbl">ENTHALPY FLOW</span>
-            <span class="val purple">${(conn.enthalpy_gjh || 0).toFixed(2)} GJ/h</span>
+      ${(conn.phase === 'BINARY') ? `
+        <div class="inspector-section">
+          <div class="inspector-section-title">DISCRETE / BINARY LOGIC STATE</div>
+          <div class="inspector-stat-grid">
+            <div class="inspector-stat-box">
+              <span class="lbl">LOGIC STATE</span>
+              <span class="val ${conn.binary_state ? 'green' : 'amber'}">${conn.binary_state ? 'TRUE (HIGH)' : 'FALSE (LOW)'}</span>
+            </div>
+            <div class="inspector-stat-box">
+              <span class="lbl">DIGITAL BIT</span>
+              <span class="val ${conn.binary_state ? 'cyan' : 'muted'}">${conn.binary_state ? '1' : '0'}</span>
+            </div>
+            <div class="inspector-stat-box">
+              <span class="lbl">WIRE TYPE</span>
+              <span class="val purple">Discrete Logic Wire</span>
+            </div>
+            <div class="inspector-stat-box">
+              <span class="lbl">MASS FLOW</span>
+              <span class="val muted">0.00 t/h (Non-material)</span>
+            </div>
           </div>
         </div>
-      </div>
+      ` : (conn.phase === 'SIGNAL') ? `
+        <div class="inspector-section">
+          <div class="inspector-section-title">ANALOG CONTROL SIGNAL</div>
+          <div class="inspector-stat-grid">
+            <div class="inspector-stat-box">
+              <span class="lbl">SIGNAL VALUE</span>
+              <span class="val cyan">${(conn.signal_value !== undefined ? Number(conn.signal_value) : 0.0).toFixed(2)}</span>
+            </div>
+            <div class="inspector-stat-box">
+              <span class="lbl">SIGNAL TYPE</span>
+              <span class="val purple">Analog Process Signal</span>
+            </div>
+            <div class="inspector-stat-box">
+              <span class="lbl">MASS FLOW</span>
+              <span class="val muted">0.00 t/h (Non-material)</span>
+            </div>
+            <div class="inspector-stat-box">
+              <span class="lbl">PROPAGATION</span>
+              <span class="val green">Real-Time Continuous</span>
+            </div>
+          </div>
+        </div>
+      ` : `
+        <div class="inspector-section">
+          <div class="inspector-section-title">THERMODYNAMIC PROPERTIES</div>
+          <div class="inspector-stat-grid">
+            <div class="inspector-stat-box">
+              <span class="lbl">MASS FLOW</span>
+              <span class="val cyan">${(conn.mass_flow_tph || 0).toFixed(2)} t/h</span>
+            </div>
+            <div class="inspector-stat-box">
+              <span class="lbl">TEMPERATURE</span>
+              <span class="val amber">${(conn.temperature_c || 25).toFixed(1)} °C</span>
+            </div>
+            <div class="inspector-stat-box">
+              <span class="lbl">PRESSURE / DRAFT</span>
+              <span class="val">${(conn.pressure_mbar || 0).toFixed(1)} mbar</span>
+            </div>
+            <div class="inspector-stat-box">
+              <span class="lbl">ENTHALPY FLOW</span>
+              <span class="val purple">${(conn.enthalpy_gjh || 0).toFixed(2)} GJ/h</span>
+            </div>
+          </div>
+        </div>
+      `}
 
-      ${compRows ? `
+      ${compRows && conn.phase !== 'BINARY' && conn.phase !== 'SIGNAL' ? `
         <div class="inspector-section">
           <div class="inspector-section-title">CHEMICAL ASSAY / SPECIES</div>
           ${compRows}
@@ -1894,11 +3079,20 @@
       streamTable.forEach(s => {
         const conn = (state.graph.connections || []).find(c => c.stream_id === s.stream_id);
         if (conn) {
-          conn.mass_flow_tph = s.mass_flow_tph;
+          if (conn.phase === 'BINARY' || conn.phase === 'SIGNAL') {
+            conn.mass_flow_tph = 0.0;
+            conn.enthalpy_gjh = 0.0;
+            if (s.binary_state !== undefined) conn.binary_state = Boolean(s.binary_state);
+            if (s.signal_value !== undefined) conn.signal_value = Number(s.signal_value);
+          } else {
+            conn.mass_flow_tph = s.mass_flow_tph;
+            if (s.enthalpy_gjh !== undefined) conn.enthalpy_gjh = s.enthalpy_gjh;
+          }
           conn.temperature_c = s.temperature_c;
           conn.pressure_mbar = s.pressure_mbar;
-          if (s.enthalpy_gjh !== undefined) conn.enthalpy_gjh = s.enthalpy_gjh;
           if (s.composition) conn.composition = s.composition;
+          if (s.binary_state !== undefined) conn.binary_state = Boolean(s.binary_state);
+          if (s.signal_value !== undefined) conn.signal_value = Number(s.signal_value);
         }
       });
     }
@@ -2106,12 +3300,102 @@
     const vBackdrop = document.getElementById('modalVerifyScenariosBackdrop');
     if (vBackdrop) vBackdrop.addEventListener('click', closeVerify);
 
-    // 2. Palette Search
+    // 2. Palette Search & Quick Library Expand/Collapse
     if (dom.paletteSearch) {
       dom.paletteSearch.addEventListener('input', (e) => {
         renderPalette(state.catalog, e.target.value);
       });
     }
+
+    if (dom.btnExpandAllCategories) {
+      dom.btnExpandAllCategories.addEventListener('click', () => {
+        state.collapsedCategories.clear();
+        renderPalette(state.catalog, dom.paletteSearch ? dom.paletteSearch.value : '');
+      });
+    }
+
+    if (dom.btnCollapseAllCategories) {
+      dom.btnCollapseAllCategories.addEventListener('click', () => {
+        const allCats = new Set((state.catalog || []).map(c => c.category));
+        state.collapsedCategories = allCats;
+        renderPalette(state.catalog, dom.paletteSearch ? dom.paletteSearch.value : '');
+      });
+    }
+
+    // 2b. Custom Component Studio Events
+    if (dom.btnOpenCustomStudio) dom.btnOpenCustomStudio.addEventListener('click', () => openCustomComponentStudio());
+    if (dom.btnOpenCustomStudioHeader) dom.btnOpenCustomStudioHeader.addEventListener('click', () => openCustomComponentStudio());
+    if (dom.btnCloseCustomStudio) dom.btnCloseCustomStudio.addEventListener('click', closeCustomComponentStudio);
+    if (dom.modalCustomStudioBackdrop) dom.modalCustomStudioBackdrop.addEventListener('click', closeCustomComponentStudio);
+
+    if (dom.customCompTemplateSelect) {
+      dom.customCompTemplateSelect.addEventListener('change', (e) => {
+        const tplId = e.target.value;
+        if (!tplId) return;
+        const tpl = (state.customTemplates || []).find(t => t.id === tplId);
+        if (tpl && dom.customCompCodeTextarea) {
+          dom.customCompCodeTextarea.value = tpl.code;
+          if (dom.customCompExistingSelect) dom.customCompExistingSelect.value = '';
+          if (dom.btnDeleteCustomComp) dom.btnDeleteCustomComp.style.display = 'none';
+          updateCustomStudioPreview(tpl.code);
+          clearCustomStatusBox();
+        }
+      });
+    }
+
+    if (dom.customCompExistingSelect) {
+      dom.customCompExistingSelect.addEventListener('change', (e) => {
+        const bType = e.target.value;
+        if (!bType) {
+          openCustomComponentStudio(null);
+          return;
+        }
+        openCustomComponentStudio(bType);
+      });
+    }
+
+    if (dom.customCompCodeTextarea) {
+      dom.customCompCodeTextarea.addEventListener('input', (e) => {
+        updateCustomStudioPreview(e.target.value);
+      });
+
+      dom.customCompCodeTextarea.addEventListener('keydown', (e) => {
+        if (e.key === 'Tab') {
+          e.preventDefault();
+          const start = e.target.selectionStart;
+          const end = e.target.selectionEnd;
+          e.target.value = e.target.value.substring(0, start) + '    ' + e.target.value.substring(end);
+          e.target.selectionStart = e.target.selectionEnd = start + 4;
+        } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+          e.preventDefault();
+          saveCustomComponent();
+        }
+      });
+    }
+
+    const quickIcons = document.querySelectorAll('.quick-icon-btn');
+    quickIcons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const icon = btn.getAttribute('data-icon') || btn.textContent.trim();
+        if (dom.customPreviewIcon) dom.customPreviewIcon.textContent = icon;
+        if (dom.customCompCodeTextarea) {
+          let code = dom.customCompCodeTextarea.value;
+          if (code.includes('icon =') || code.includes('icon:')) {
+            code = code.replace(/icon\s*=\s*["'][^"']+["']/, `icon = "${icon}"`);
+          } else {
+            code = code.replace(/(block_type\s*=\s*["'][^"']+["']\n)/, `$1    icon = "${icon}"\n`);
+          }
+          dom.customCompCodeTextarea.value = code;
+          updateCustomStudioPreview(code);
+        }
+      });
+    });
+
+    if (dom.btnValidateCustomComponent) dom.btnValidateCustomComponent.addEventListener('click', () => validateCustomComponent(true));
+    if (dom.btnSaveCustomComponent) dom.btnSaveCustomComponent.addEventListener('click', saveCustomComponent);
+    if (dom.btnDeleteCustomComp) dom.btnDeleteCustomComp.addEventListener('click', deleteCustomComponentAction);
+    if (dom.btnRescanCustomFolder) dom.btnRescanCustomFolder.addEventListener('click', rescanCustomFolderAction);
+    if (dom.btnDownloadCustomPy) dom.btnDownloadCustomPy.addEventListener('click', downloadCustomPyAction);
 
     // 3. Solve Steady-State
     if (dom.btnSolve) dom.btnSolve.addEventListener('click', solveSteadyState);
@@ -2468,7 +3752,7 @@
     }
   }
 
-  function toggleSimulation() {
+  async function toggleSimulation() {
     state.isSimulating = !state.isSimulating;
     if (state.isSimulating) {
       if (dom.btnRunSim) {
@@ -2476,6 +3760,18 @@
         dom.btnRunSim.className = 'builder-toolbar-btn btn-amber';
       }
       updateSimStatus('RUNNING');
+
+      // Sync client canvas graph to backend active solver so dynamic steps run on this flowsheet
+      try {
+        await fetch('/api/flowsheet/builder/deploy', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(state.graph),
+        });
+      } catch (e) {
+        console.warn('Auto-deploy prior to sim step error:', e);
+      }
+
       renderGraph();
       const intervalMs = Math.max(60, Math.round(500 / (state.simSpeed || 1.0)));
       state.simInterval = setInterval(runDynamicStep, intervalMs);
@@ -2511,11 +3807,20 @@
           stepData.streams.forEach((s) => {
             const conn = state.graph.connections.find(c => c.stream_id === s.stream_id);
             if (conn) {
-              conn.mass_flow_tph = s.mass_flow_tph;
+              if (conn.phase === 'BINARY' || conn.phase === 'SIGNAL') {
+                conn.mass_flow_tph = 0.0;
+                conn.enthalpy_gjh = 0.0;
+                if (s.binary_state !== undefined) conn.binary_state = Boolean(s.binary_state);
+                if (s.signal_value !== undefined) conn.signal_value = Number(s.signal_value);
+              } else {
+                conn.mass_flow_tph = s.mass_flow_tph;
+                conn.enthalpy_gjh = s.enthalpy_gjh;
+              }
               conn.temperature_c = s.temperature_c;
               conn.pressure_mbar = s.pressure_mbar;
-              conn.enthalpy_gjh = s.enthalpy_gjh;
               conn.composition = s.composition;
+              if (s.binary_state !== undefined) conn.binary_state = Boolean(s.binary_state);
+              if (s.signal_value !== undefined) conn.signal_value = Number(s.signal_value);
             }
           });
         }
@@ -2584,7 +3889,7 @@
 
     loadGraph(state.graph);
     saveAutoFlowsheet();
-    renderInspectorOverview();
+    renderGlobalInspector();
     renderFlowsheetsLibrary();
 
     if (dom.kpiMassIn) dom.kpiMassIn.textContent = '0.0 t/h';
@@ -2886,6 +4191,8 @@
   window.toggleFullscreen = toggleFullscreen;
   window.fitGraphToView = fitGraphToView;
   window.showToast = showToast;
+  window.openCustomComponentStudio = openCustomComponentStudio;
+  window.closeCustomComponentStudio = closeCustomComponentStudio;
 
   window.FlowsheetBuilder = {
     init,
@@ -2901,6 +4208,10 @@
     toggleFullscreen,
     fitGraphToView,
     showToast,
+    openCustomComponentStudio,
+    closeCustomComponentStudio,
+    loadCustomComponentTemplates,
+    loadCustomComponentsList,
   };
 
   // Keyboard shortcut: Ctrl+S / Cmd+S to save flowsheet in place

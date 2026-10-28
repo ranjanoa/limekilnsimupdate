@@ -225,15 +225,13 @@ class FlowsheetGraph:
             if len(outgoing) <= 1:
                 continue
 
-            # Find primary stream (to a non-sensor block)
+            # Find primary stream (to a non-sensor block, or outgoing[0])
             primary = next(
                 (s for s in outgoing if s.to_block in self.blocks and self.blocks[s.to_block].block_type != "StreamSensor"),
-                None
+                outgoing[0]
             )
-            if not primary:
-                continue
 
-            # Synchronize all StreamSensor taps with the primary stream
+            # Synchronize StreamSensor taps and multi-drop control signal/binary connections
             for s in outgoing:
                 if s.stream_id != primary.stream_id:
                     tgt_block = self.blocks.get(s.to_block)
@@ -246,6 +244,15 @@ class FlowsheetGraph:
                             volume_flow_nm3h=primary.volume_flow_nm3h,
                         )
                         s.enthalpy_gjh = primary.enthalpy_gjh
+                        s.phase = primary.phase
+                    elif primary.phase in (StreamPhase.SIGNAL, StreamPhase.BINARY) or s.phase in (StreamPhase.SIGNAL, StreamPhase.BINARY):
+                        s.update_state(
+                            signal_value=primary.signal_value,
+                            binary_state=primary.binary_state,
+                            temperature_c=primary.temperature_c,
+                            mass_flow_tph=0.0,
+                        )
+                        s.enthalpy_gjh = 0.0
                         s.phase = primary.phase
 
     def get_upstream_blocks(self, block_id: str) -> List[str]:
@@ -477,12 +484,14 @@ class FlowsheetGraph:
                     "source": {"block": s.from_block, "port": s.from_port},
                     "target": {"block": s.to_block, "port": s.to_port},
                     "phase": s.phase.value,
-                    "mass_flow_tph": round(s.mass_flow_tph, 3),
-                    "volume_flow_nm3h": round(s.volume_flow_nm3h, 1) if s.volume_flow_nm3h is not None else None,
+                    "mass_flow_tph": 0.0 if s.phase in (StreamPhase.SIGNAL, StreamPhase.BINARY) else round(s.mass_flow_tph, 3),
+                    "volume_flow_nm3h": round(s.volume_flow_nm3h, 1) if (s.volume_flow_nm3h is not None and s.phase not in (StreamPhase.SIGNAL, StreamPhase.BINARY)) else None,
                     "temperature_c": round(s.temperature_c, 2),
                     "pressure_mbar": round(s.pressure_mbar, 2),
-                    "enthalpy_gjh": round(s.enthalpy_gjh, 3),
+                    "enthalpy_gjh": 0.0 if s.phase in (StreamPhase.SIGNAL, StreamPhase.BINARY) else round(s.enthalpy_gjh, 3),
                     "composition": s.composition,
+                    "signal_value": round(s.signal_value, 4),
+                    "binary_state": s.binary_state,
                 }
                 for s in self.streams.values()
             ],
@@ -540,6 +549,8 @@ class FlowsheetGraph:
                     pressure_mbar=conn_data.get("pressure_mbar"),
                     composition=conn_data.get("composition"),
                     volume_flow_nm3h=conn_data.get("volume_flow_nm3h"),
+                    signal_value=conn_data.get("signal_value"),
+                    binary_state=conn_data.get("binary_state"),
                 )
 
         return graph

@@ -111,9 +111,22 @@ py test_flowsheet_builder.py
   - `GET /api/flowsheet/builder/load/<name>`: Loads saved flowsheet.
   - `POST /api/flowsheet/builder/deploy`: Deploys custom flowsheet and dynamically registers all block state & setpoint tags as live OPC UA Variable Nodes.
 
+### Phase 6: Custom Component Studio & Dynamic Auto-Registration — COMPLETED ✅
+- **Template Component:** Standard reference unit operation block in `engine/modular/library/custom/template_component.py` with clearly annotated sections for ports, parameters, steady-state balances, and dynamic steps.
+- **Auto-Discovery & Dynamic Registration:** `engine/modular/library/custom_loader.py` dynamically discovers, imports, and registers all user-defined `BlockBase` subclasses in the `custom/` directory without requiring manual imports or edits to `__init__.py`.
+- **Pre-Built Archetype Templates:** 6 production-grade starter templates accessible in 1 click (Generic Process Unit, Continuous Kinetic Reactor, Counter-flow Heat Exchanger, Gas-Solid Cyclone Separator, Proportional Stream Splitter, and Minimal Clean Scaffold).
+- **Interactive UI Component Studio:**
+  - Integrated into the Component Library sidebar with **"✨ + Create Custom Component"**.
+  - Dropdown template selector with live Python code editor (with syntax styles, Tab-indent, and Ctrl+S shortcut).
+  - Quick Emoji icon picker and live badge counters (ports, parameters, class name).
+  - **"🧪 Validate Code"** button executing instant compilation, AST syntax verification, and dummy steady-state run with exact error line reporting.
+  - **"💾 Save & Auto-Register"** writing directly to `engine/modular/library/custom/<name>.py`, auto-registering in `BLOCK_REGISTRY`, and instantly making it draggable in the live canvas palette with a glowing `CUSTOM` badge.
+  - **"✏️ Edit Code"** button on each custom palette card for live hot-reloading and tweaking.
+  - **"🔄 Rescan Disk"** to auto-sync files created or edited externally in VS Code / PyCharm.
+
 ---
 
-## 4. How to Use the Flowsheet Builder
+## 4. How to Use the Flowsheet Builder & Custom Component Studio
 
 1. **Launch the server:**
    ```powershell
@@ -122,9 +135,19 @@ py test_flowsheet_builder.py
 2. **Open the browser at:** [http://localhost:8080/index.html](http://localhost:8080/index.html)
 3. **Switch to Builder Mode:**
    Click the **"🛠 Flowsheet Builder"** button in the top navigation bar or synoptic header.
-4. **Build or Modify Flowsheets:**
+4. **Create a Custom Component via UI:**
+   - In the left sidebar under **📦 Component Library**, click **"✨ + Create Custom Component"** (or **"+ Custom"** in the header).
+   - Select a starter template (e.g. *Generic Process Unit*, *Continuous Reactor*, *Heat Exchanger*).
+   - Customize class name, ports, parameters, and balance equations in the built-in editor.
+   - Click **"🧪 Validate Code"** to check syntax and physics.
+   - Click **"💾 Save & Auto-Register"**. The component appears immediately in your palette with a `CUSTOM` badge, ready to wire and simulate!
+5. **Create a Custom Component via IDE / Python:**
+   - Copy `engine/modular/library/custom/template_component.py` to a new file, e.g., `engine/modular/library/custom/my_unit.py`.
+   - Implement your logic, set `is_template = False` (or remove it), and save.
+   - The simulator dynamically auto-registers your class into `BLOCK_REGISTRY` without touching `__init__.py` or restarting the server!
+6. **Build or Modify Flowsheets:**
    - **Load a Template:** Use the top dropdown to load the *Kiln 3 Full Plant*, *Single Cyclone Demo*, etc.
-   - **Add Equipment:** Drag blocks from the left palette onto the canvas.
+   - **Add Equipment:** Drag blocks (including your custom components!) from the left palette onto the canvas.
    - **Wire Units:** Click a colored port on the right side of a unit and drag to an input port on the left of another unit.
    - **Inspect & Tune:** Click any equipment or wire to adjust parameters or view thermodynamics in the right Inspector panel.
    - **Solve & Simulate:** Click **"⚡ Solve Balances"** to converge the steady-state model or **"▶ Run Sim"** to watch live dynamic flow pulses!

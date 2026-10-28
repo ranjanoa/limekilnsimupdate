@@ -22,8 +22,23 @@ from urllib.parse import urlparse
 from engine.first_principles_engine import FirstPrinciplesEngine
 from engine.modular.manager import ModularEngineManager
 from engine.modular.scenarios import get_scenarios_catalog, apply_scenario, verify_all_scenarios
+from engine.modular.library import (
+    BLOCK_REGISTRY,
+    get_component_catalog,
+    load_custom_components,
+    validate_component_source,
+    save_and_register_custom_component,
+    delete_custom_component,
+    get_custom_components_list,
+    get_available_templates,
+)
 from interfaces.opc_ua_server import CementOpcUaServer
 from interfaces.opc_ua_client_bridge import CementOpcUaClientBridge
+
+import mimetypes
+mimetypes.add_type("application/javascript", ".js")
+mimetypes.add_type("text/javascript", ".js")
+mimetypes.add_type("text/css", ".css")
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(message)s")
 logger = logging.getLogger("MasterServer")
@@ -31,11 +46,38 @@ logger = logging.getLogger("MasterServer")
 if getattr(sys, "frozen", False):
     EXE_DIR = os.path.dirname(os.path.abspath(sys.executable))
     BUNDLE_DIR = getattr(sys, "_MEIPASS", EXE_DIR)
-    BASE_DIR = EXE_DIR if os.path.exists(os.path.join(EXE_DIR, "simulator")) else BUNDLE_DIR
+
+    # 1. Locate simulator directory (prefer adjacent to .exe if present, fallback to bundled)
+    if os.path.exists(os.path.join(EXE_DIR, "simulator", "index.html")):
+        SIMULATOR_DIR = os.path.join(EXE_DIR, "simulator")
+    elif os.path.exists(os.path.join(BUNDLE_DIR, "simulator", "index.html")):
+        SIMULATOR_DIR = os.path.join(BUNDLE_DIR, "simulator")
+    elif os.path.exists(os.path.join(EXE_DIR, "simulator")):
+        SIMULATOR_DIR = os.path.join(EXE_DIR, "simulator")
+    else:
+        SIMULATOR_DIR = os.path.join(BUNDLE_DIR, "simulator")
+
+    # 2. Locate configuration directory (prefer adjacent to .exe if present, fallback to bundled)
+    if os.path.exists(os.path.join(EXE_DIR, "config", "plant_config.json")):
+        CONFIG_PATH = os.path.join(EXE_DIR, "config", "plant_config.json")
+        BASE_DIR = EXE_DIR
+    elif os.path.exists(os.path.join(BUNDLE_DIR, "config", "plant_config.json")):
+        CONFIG_PATH = os.path.join(BUNDLE_DIR, "config", "plant_config.json")
+        BASE_DIR = BUNDLE_DIR
+    else:
+        BASE_DIR = EXE_DIR if os.path.exists(os.path.join(EXE_DIR, "simulator")) else BUNDLE_DIR
+        CONFIG_PATH = os.path.join(BASE_DIR, "config", "plant_config.json")
 else:
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-SIMULATOR_DIR = os.path.join(BASE_DIR, "simulator")
-CONFIG_PATH = os.path.join(BASE_DIR, "config", "plant_config.json")
+    SIMULATOR_DIR = os.path.join(BASE_DIR, "simulator")
+    CONFIG_PATH = os.path.join(BASE_DIR, "config", "plant_config.json")
+
+# Verify critical frontend asset existence
+index_file = os.path.join(SIMULATOR_DIR, "index.html")
+if not os.path.exists(index_file):
+    logger.error(f"❌ [CRITICAL] index.html not found in {SIMULATOR_DIR}!")
+else:
+    logger.info(f"Verified Web HMI root: {SIMULATOR_DIR}")
 
 # Shared Engine, Modular Flowsheet & OPC Server Instances
 engine = FirstPrinciplesEngine(config_path=CONFIG_PATH)
@@ -191,6 +233,13 @@ class SimulatorRestHttpHandler(SimpleHTTPRequestHandler):
         self._send_cors_headers()
         self.end_headers()
 
+    def do_HEAD(self):
+        parsed = urlparse(self.path)
+        if parsed.path.startswith("/api/"):
+            self.do_GET()
+        else:
+            super().do_HEAD()
+
     def do_GET(self):
         parsed = urlparse(self.path)
         if parsed.path == "/api/config":
@@ -268,6 +317,33 @@ class SimulatorRestHttpHandler(SimpleHTTPRequestHandler):
             self.end_headers()
             catalog = modular_manager.get_component_catalog()
             self.wfile.write(json.dumps(catalog).encode("utf-8"))
+        elif parsed.path == "/api/flowsheet/builder/custom_components/templates":
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self._send_cors_headers()
+            self.end_headers()
+            self.wfile.write(json.dumps(get_available_templates()).encode("utf-8"))
+        elif parsed.path == "/api/flowsheet/builder/custom_components":
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self._send_cors_headers()
+            self.end_headers()
+            self.wfile.write(json.dumps(get_custom_components_list()).encode("utf-8"))
+        elif parsed.path.startswith("/api/flowsheet/builder/custom_components/"):
+            comp_type = parsed.path.split("/")[-1]
+            comps = {c["type"]: c for c in get_custom_components_list()}
+            if comp_type in comps:
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(json.dumps(comps[comp_type]).encode("utf-8"))
+            else:
+                self.send_response(404)
+                self.send_header("Content-Type", "application/json")
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "error", "message": f"Custom component '{comp_type}' not found"}).encode("utf-8"))
         elif parsed.path == "/api/flowsheet/builder/templates":
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
@@ -333,6 +409,8 @@ class SimulatorRestHttpHandler(SimpleHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({"status": "error", "message": str(e)}).encode("utf-8"))
         else:
+            if parsed.path in ("/", ""):
+                self.path = "/index.html"
             super().do_GET()
 
     def do_POST(self):
@@ -571,6 +649,74 @@ class SimulatorRestHttpHandler(SimpleHTTPRequestHandler):
                 self._send_cors_headers()
                 self.end_headers()
                 self.wfile.write(json.dumps({"status": "error", "message": str(e)}).encode("utf-8"))
+        elif parsed.path == "/api/flowsheet/builder/custom_components/validate":
+            try:
+                body = json.loads(post_body.decode("utf-8"))
+                code = body.get("code", "")
+                val_res = validate_component_source(code)
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(json.dumps(val_res).encode("utf-8"))
+            except Exception as e:
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json")
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(json.dumps({"valid": False, "error": str(e)}).encode("utf-8"))
+        elif parsed.path == "/api/flowsheet/builder/custom_components":
+            try:
+                body = json.loads(post_body.decode("utf-8"))
+                code = body.get("code", "")
+                fname = body.get("filename")
+                save_res = save_and_register_custom_component(code, BLOCK_REGISTRY, fname)
+                status_code = 200 if save_res.get("valid") else 400
+                self.send_response(status_code)
+                self.send_header("Content-Type", "application/json")
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(json.dumps(save_res).encode("utf-8"))
+            except Exception as e:
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json")
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(json.dumps({"valid": False, "error": str(e)}).encode("utf-8"))
+        elif parsed.path in ("/api/flowsheet/builder/custom_components/delete", "/api/flowsheet/builder/custom_components/remove"):
+            try:
+                body = json.loads(post_body.decode("utf-8"))
+                b_type = body.get("block_type") or body.get("type")
+                del_res = delete_custom_component(b_type, BLOCK_REGISTRY)
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "success" if del_res else "not_found", "block_type": b_type}).encode("utf-8"))
+            except Exception as e:
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json")
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "error", "message": str(e)}).encode("utf-8"))
+        elif parsed.path == "/api/flowsheet/builder/custom_components/reload":
+            try:
+                reloaded = load_custom_components(BLOCK_REGISTRY)
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "status": "success",
+                    "count": len(reloaded),
+                    "registered": list(reloaded.keys())
+                }).encode("utf-8"))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json")
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "error", "message": str(e)}).encode("utf-8"))
         elif parsed.path == "/api/flowsheet/builder/solve":
             try:
                 body = json.loads(post_body.decode("utf-8"))
@@ -801,10 +947,60 @@ class SimulatorRestHttpHandler(SimpleHTTPRequestHandler):
             self._send_cors_headers()
             self.end_headers()
 
-def run_http_server(port=8080):
-    httpd = ThreadingHTTPServer(("0.0.0.0", port), SimulatorRestHttpHandler)
-    logger.info(f"🌐 Web HMI & REST API Server listening at http://localhost:{port}/index.html")
-    httpd.serve_forever()
+    def do_DELETE(self):
+        parsed = urlparse(self.path)
+        if parsed.path.startswith("/api/flowsheet/builder/custom_components/"):
+            comp_type = parsed.path.split("/")[-1]
+            del_res = delete_custom_component(comp_type, BLOCK_REGISTRY)
+            self.send_response(200 if del_res else 404)
+            self.send_header("Content-Type", "application/json")
+            self._send_cors_headers()
+            self.end_headers()
+            self.wfile.write(json.dumps({"status": "success" if del_res else "not_found", "block_type": comp_type}).encode("utf-8"))
+        else:
+            self.send_response(404)
+            self._send_cors_headers()
+            self.end_headers()
+
+
+def start_http_server(requested_port=8085, max_attempts=50):
+    """
+    Binds and starts ThreadingHTTPServer on requested_port.
+    If requested_port is occupied (e.g., PostgreSQL/EnterpriseDB Apache service, Tomcat, or another app on 8080),
+    it automatically detects the port collision and falls back to the next available port.
+    Returns (httpd, bound_port).
+    """
+    httpd = None
+    bound_port = None
+
+    for offset in range(max_attempts):
+        port = requested_port + offset
+        try:
+            httpd = ThreadingHTTPServer(("0.0.0.0", port), SimulatorRestHttpHandler)
+            bound_port = port
+            if offset > 0:
+                logger.warning(
+                    f"⚠️ Port {requested_port} is busy or restricted (e.g. PostgreSQL/Apache service running). "
+                    f"Automatically switched Web HMI to available port {bound_port}."
+                )
+            break
+        except OSError as exc:
+            logger.info(f"Port {port} busy or unavailable ({exc}). Trying port {port + 1}...")
+
+    if httpd is None or bound_port is None:
+        raise RuntimeError(
+            f"Could not bind Web HMI HTTP server to any port in range {requested_port}-{requested_port + max_attempts - 1}."
+        )
+
+    http_thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    http_thread.start()
+    logger.info(f"🌐 Web HMI & REST API Server listening at http://localhost:{bound_port}/index.html")
+    return httpd, bound_port
+
+def run_http_server(port=8085):
+    """Compatibility wrapper that starts HTTP server."""
+    httpd, actual_port = start_http_server(requested_port=port)
+    return httpd, actual_port
 
 async def main():
     global active_opc_server, active_event_loop
@@ -813,7 +1009,7 @@ async def main():
     parser = argparse.ArgumentParser(description="Kiln 3 First-Principles Dynamic Simulator & Optimizer Testbed")
     parser.add_argument("--mode", choices=["server", "client", "standalone"], default=None,
                         help="Operation mode: 'server' (OPC UA Server), 'client' (OPC UA Client Bridge), or 'standalone' (autonomous simulator without OPC)")
-    parser.add_argument("--http-port", type=int, default=8080, help="Web HMI HTTP port (default 8080)")
+    parser.add_argument("--http-port", type=int, default=8085, help="Web HMI HTTP port (default 8085, with auto-fallback)")
     args = parser.parse_args()
 
     with open(CONFIG_PATH, "r", encoding="utf-8") as f:
@@ -828,14 +1024,13 @@ async def main():
     logger.info(f"  Operating Mode: {mode.upper()}")
     logger.info("=" * 78)
 
-    # 1. Start HTTP Server in Background Thread
-    http_thread = threading.Thread(target=run_http_server, args=(args.http_port,), daemon=True)
-    http_thread.start()
+    # 1. Start HTTP Server with automatic port collision fallback
+    httpd, actual_port = start_http_server(requested_port=args.http_port)
 
-    # Automatically launch default browser to Web HMI
+    # Automatically launch default browser to Web HMI on the successfully bound port
     def open_browser():
         time.sleep(1.2)
-        url = f"http://localhost:{args.http_port}/index.html"
+        url = f"http://localhost:{actual_port}/index.html"
         logger.info(f"Opening browser at {url}...")
         try:
             webbrowser.open(url)
