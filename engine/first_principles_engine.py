@@ -183,18 +183,22 @@ class FirstPrinciplesEngine:
         clamped_feed_sp = max(min_feed, min(max_feed, target_feed))
         self.raw_meal_feed += (clamped_feed_sp - self.raw_meal_feed) * (dt / max(0.2, tau_feeder))
 
-        # 3. Kiln Speed & Bed Transport Dynamics
+        # 3. Kiln Speed & Delayed Bed Transport Dynamics
         nom_speed = self.cfg_dims.get("rotary_kiln", {}).get("nominal_speed_rpm", 3.79)
         target_speed = nom_speed * (self.raw_meal_feed / self.nominal_feed)
         self.kiln_speed += (target_speed - self.kiln_speed) * (dt / 3.0)
-        self.kiln_amps = 254.0 * (0.3 + 0.7 * (self.raw_meal_feed / self.nominal_feed))
-        self.filling_degree = 10.96 * (self.raw_meal_feed / self.nominal_feed) / max(0.5, (self.kiln_speed / nom_speed))
 
         # Solids transit delay to clinker discharge (Saeman residence time ~ 26.8 min)
         transit_sec = self.cfg_dims.get("rotary_kiln", {}).get("solids_bed_transit_time_min", 26.8) * 60.0
         steady_clinker = self.raw_meal_feed / self.clinker_factor
         tau_bed = transit_sec / max(0.2, (self.kiln_speed / nom_speed))
         self.clinker_production += (steady_clinker - self.clinker_production) * (dt / tau_bed)
+
+        # Kiln filling degree and drive amps depend on delayed burning-zone bed load + liquid-phase rheology
+        delayed_feed_equiv = self.clinker_production * self.clinker_factor
+        self.filling_degree = 10.96 * (delayed_feed_equiv / self.nominal_feed) / max(0.5, (self.kiln_speed / nom_speed))
+        rheo_factor = 1.0 + max(-0.08, min(0.18, (self.sintering_temp - 1450.0) * 0.0012))
+        self.kiln_amps = 254.0 * (0.3 + 0.7 * (delayed_feed_equiv / self.nominal_feed) * rheo_factor)
 
         # 4. Precalciner Fuel & Decarbonation Kinetics
         # Base fuel demand with feedforward trim + optimizer bias

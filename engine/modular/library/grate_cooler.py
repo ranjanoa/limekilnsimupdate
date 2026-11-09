@@ -33,6 +33,7 @@ class GrateCooler(BlockBase):
         return {
             "grate_area_m2": {"type": float, "default": 105.0, "min": 30.0, "max": 250.0, "unit": "m²", "label": "Grate Active Surface Area"},
             "cooling_air_total_tph": {"type": float, "default": 348.5, "min": 50.0, "max": 600.0, "unit": "t/h", "label": "Nominal Under-grate Air"},
+            "grate_speed_spm": {"type": float, "default": 18.0, "min": 2.0, "max": 35.0, "unit": "spm", "label": "Grate Transport Speed"},
             "secondary_air_split_pct": {"type": float, "default": 24.2, "min": 10.0, "max": 40.0, "unit": "%", "label": "Secondary Air Split"},
             "tertiary_air_split_pct": {"type": float, "default": 36.8, "min": 15.0, "max": 50.0, "unit": "%", "label": "Tertiary Air Split"},
             "recuperation_efficiency": {"type": float, "default": 0.74, "min": 0.50, "max": 0.85, "unit": "-", "label": "Thermal Recuperation Efficiency"},
@@ -45,9 +46,12 @@ class GrateCooler(BlockBase):
             "tertiary_air_temp_c": 880.0,
             "cooler_vent_temp_c": 260.0,
             "clinker_exit_temp_c": 95.0,
+            "bed_depth_m": 0.62,
+            "undergrate_pressure_mbar": 58.0,
             "recuperated_heat_gjh": 205.4,
             "cooler_hydraulic_press_bar": 92.0,
             "heat_loss_gjh": 8.5,
+            "dynamic_bed_mass_tons": 91.0,
         }
 
     def evaluate_steady_state(
@@ -69,6 +73,21 @@ class GrateCooler(BlockBase):
             m_air_total = float(self.parameters.get("cooling_air_total_tph", 348.5))
             t_air_ambient = 25.0
 
+        grate_area = max(10.0, float(self.parameters.get("grate_area_m2", 105.0)))
+        grate_spm = max(2.0, float(self.parameters.get("grate_speed_spm", 18.0)))
+
+        # Clinker bed depth & Ergun under-grate pressure drop
+        # Residence time on grate scales inversely with grate strokes/min (nominal ~31 mins at 18 spm)
+        cooler_res_hr = (31.2 / 60.0) * (18.0 / grate_spm)
+        bed_mass_tons = self.state.get("dynamic_bed_mass_tons") or (m_clinker * cooler_res_hr)
+        rho_clinker_bulk = 1.40  # t/m3
+        bed_depth_m = max(0.15, min(1.50, bed_mass_tons / (rho_clinker_bulk * grate_area)))
+
+        # Superficial air velocity and Ergun porous bed pressure drop
+        v_air_superficial = (m_air_total / 348.5) * (105.0 / grate_area)
+        dp_undergrate_mbar = max(15.0, min(110.0, 58.0 * (bed_depth_m / 0.62) * (v_air_superficial ** 1.8)))
+        hyd_press_bar = max(40.0, min(180.0, 45.0 + 47.0 * (bed_mass_tons / 91.0)))
+
         sec_split = float(self.parameters.get("secondary_air_split_pct", 24.2)) / 100.0
         tert_split = float(self.parameters.get("tertiary_air_split_pct", 36.8)) / 100.0
         vent_split = max(0.0, 1.0 - (sec_split + tert_split))
@@ -77,10 +96,15 @@ class GrateCooler(BlockBase):
         m_tert_air = m_air_total * tert_split
         m_vent_air = m_air_total * vent_split
 
-        eta_recup = float(self.parameters.get("recuperation_efficiency", 0.74))
+        eta_recup_base = float(self.parameters.get("recuperation_efficiency", 0.74))
+        # Optimal bed depth (~0.60-0.65m) maximizes gas-solid contact; very thin or overloaded bed loses efficiency
+        depth_factor = max(0.75, min(1.06, 1.0 - 0.35 * ((bed_depth_m - 0.65) ** 2)))
+        eta_recup = min(0.85, eta_recup_base * depth_factor)
+
         target_t = float(self.parameters.get("clinker_target_temp_c", 95.0))
-        # Physical aeration dependency: nominal air is ~348.5 t/h. If under-aerated, clinker cannot cool completely
-        air_ratio = min(1.5, max(0.2, m_air_total / 348.5))
+        # Specific cooling air ratio (kg air / kg clinker); nominal is 348.5 / 175.0 = 1.99
+        specific_air_ratio = (m_air_total / max(10.0, m_clinker)) / 1.99
+        air_ratio = min(1.5, max(0.2, specific_air_ratio))
         t_clinker_exit = target_t + max(0.0, (1.0 - air_ratio) * 160.0)
 
         # Total heat released by clinker (Cp ~ 0.26 kcal/kg*C)
@@ -90,19 +114,14 @@ class GrateCooler(BlockBase):
         q_recup = q_clinker_released * eta_recup
         q_loss = q_clinker_released * 0.04
 
-        # Heat partition based on clinker enthalpy recuperation
-        # Grate 1 recuperation zone heats secondary air to kiln hood (~1000-1050C)
-        # Tertiary air takeoff hood sits immediately adjacent over Grate 1 (~860-880C)
-        # Quench grate vent air exhausts to dedusting filter (~240-270C)
         cp_air = 0.26 * 4.184 / 1000.0  # GJ/(t*C)
-        # Nominal clinker heat recuperation ~ 185 GJ/h
-        t_sec = 25.0 + (q_recup * 0.46) / max(0.01, m_sec_air * cp_air)
+        t_sec = t_air_ambient + (q_recup * 0.46) / max(0.01, m_sec_air * cp_air)
         t_sec = max(300.0, min(1250.0, t_sec))
 
-        t_tert = 25.0 + (t_sec - 25.0) * 0.86
+        t_tert = t_air_ambient + (t_sec - t_air_ambient) * 0.86
         t_tert = max(250.0, min(1050.0, t_tert))
 
-        t_vent = 25.0 + (q_recup * 0.17) / max(0.01, m_vent_air * cp_air)
+        t_vent = t_air_ambient + (q_recup * 0.17) / max(0.01, m_vent_air * cp_air)
         t_vent = max(100.0, min(450.0, t_vent))
 
         # Update block state
@@ -110,6 +129,9 @@ class GrateCooler(BlockBase):
         self.state["tertiary_air_temp_c"] = round(t_tert, 1)
         self.state["cooler_vent_temp_c"] = round(t_vent, 1)
         self.state["clinker_exit_temp_c"] = round(t_clinker_exit, 1)
+        self.state["bed_depth_m"] = round(bed_depth_m, 3)
+        self.state["undergrate_pressure_mbar"] = round(dp_undergrate_mbar, 1)
+        self.state["cooler_hydraulic_press_bar"] = round(hyd_press_bar, 1)
         self.state["recuperated_heat_gjh"] = round(q_recup, 2)
         self.state["heat_loss_gjh"] = round(q_loss, 2)
 
@@ -159,7 +181,17 @@ class GrateCooler(BlockBase):
         inlet_streams: Dict[str, ProcessStream],
         outlet_streams: Dict[str, ProcessStream],
     ) -> None:
-        """Dynamic ODE step integrating clinker grate bed thermal inertia."""
+        """Dynamic ODE step integrating clinker grate bed mass inventory and thermal inertia."""
+        in_clinker = inlet_streams.get("in_clinker_hot")
+        m_clinker_in = in_clinker.mass_flow_tph if in_clinker else 175.0
+        grate_spm = max(2.0, float(self.parameters.get("grate_speed_spm", 18.0)))
+        cooler_res_hr = (31.2 / 60.0) * (18.0 / grate_spm)
+
+        curr_bed_mass = float(self.state.get("dynamic_bed_mass_tons", m_clinker_in * cooler_res_hr))
+        m_clinker_out = curr_bed_mass / max(0.05, cooler_res_hr)
+        new_bed_mass = max(10.0, curr_bed_mass + (m_clinker_in - m_clinker_out) * (dt / 3600.0))
+        self.state["dynamic_bed_mass_tons"] = round(new_bed_mass, 2)
+
         self.evaluate_steady_state(inlet_streams, outlet_streams)
         t_sec_tgt = self.state["secondary_air_temp_c"]
         t_tert_tgt = self.state["tertiary_air_temp_c"]
@@ -177,6 +209,10 @@ class GrateCooler(BlockBase):
         self.state["secondary_air_temp_c"] = round(new_sec, 1)
         self.state["tertiary_air_temp_c"] = round(new_tert, 1)
 
+        out_clinker = outlet_streams.get("out_clinker_cool")
+        if out_clinker:
+            out_clinker.mass_flow_tph = round(m_clinker_out, 2)
+            out_clinker.compute_enthalpy()
         out_sec = outlet_streams.get("out_secondary_air")
         if out_sec:
             out_sec.temperature_c = round(new_sec, 1)

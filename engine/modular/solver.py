@@ -115,9 +115,27 @@ class FlowsheetSolver:
                 else:
                     new_x = 0.5 * (x_curr + fx_curr)
 
+                # Wegstein update for tear stream temperature (critical for Secondary/Tertiary Air recycle)
+                if sid in history and "temp" in history[sid]:
+                    t_prev, ft_prev = history[sid]["temp"]
+                    denom_t = (t_curr - t_prev)
+                    if abs(denom_t) > 1e-6:
+                        slope_t = (ft_curr - ft_prev) / denom_t
+                        if abs(slope_t - 1.0) > 1e-4:
+                            q_t = slope_t / (slope_t - 1.0)
+                            q_t = max(-self.wegstein_bound, min(0.0, q_t))
+                            new_t = (1.0 - q_t) * ft_curr + q_t * t_curr
+                        else:
+                            new_t = 0.5 * (t_curr + ft_curr)
+                    else:
+                        new_t = 0.5 * (t_curr + ft_curr)
+                else:
+                    new_t = 0.5 * (t_curr + ft_curr)
+
                 # Update history
                 history.setdefault(sid, {})["mass"] = (x_curr, fx_curr)
-                s.update_state(mass_flow_tph=max(0.0, new_x))
+                history.setdefault(sid, {})["temp"] = (t_curr, ft_curr)
+                s.update_state(mass_flow_tph=max(0.0, new_x), temperature_c=max(0.0, new_t))
 
             min_iters = min(6, len(tear_stream_ids)) if tear_stream_ids else 1
             if max_residual < self.tolerance and iteration >= min_iters:
@@ -131,9 +149,12 @@ class FlowsheetSolver:
         if converged:
             for b_id, block in self.graph.blocks.items():
                 if block.block_type == "RotaryKiln":
+                    holdup_ss = float(block.state.get("bed_holdup_tons", 85.0))
+                    n_zones = max(3, int(block.parameters.get("num_axial_zones", 10)))
                     block.state["dynamic_clinker_tph"] = float(block.state.get("clinker_rate_tph", 175.0))
-                    block.state["dynamic_holdup_tons"] = float(block.state.get("bed_holdup_tons", 85.0))
+                    block.state["dynamic_holdup_tons"] = holdup_ss
                     block.state["dynamic_bz_temp_c"] = float(block.state.get("burning_zone_temp_c", 1435.0))
+                    block.state["axial_zone_holdups_tons"] = [holdup_ss / float(n_zones) for _ in range(n_zones)]
                 elif block.block_type == "CalcinerReactor":
                     block.state["dynamic_temp_c"] = float(block.state.get("calciner_temp_c", 885.0))
                     block.state["dynamic_alpha_pct"] = float(block.state.get("calcination_degree_pct", 92.5))

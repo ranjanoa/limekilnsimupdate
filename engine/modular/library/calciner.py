@@ -76,25 +76,29 @@ class CalcinerReactor(BlockBase):
         comb_eff = float(self.parameters.get("combustion_efficiency", 99.0)) / 100.0
         loss_pct = float(self.parameters.get("heat_loss_pct", 3.5)) / 100.0
 
-        # 1. Fuel combustion heat release
+        # 1. Fuel combustion heat release & moisture vaporization penalty
         lhv = in_fuel.composition.get("lhv_mj_kg", 27.5) if in_fuel else 27.5
-        q_fuel_mw = (m_fuel * 1000.0 * lhv * comb_eff) / 3600.0
-        q_fuel_gjh = m_fuel * lhv * comb_eff
+        fuel_moisture_pct = float(in_fuel.composition.get("moisture_pct", 1.0)) if in_fuel else 1.0
+        meal_moisture_pct = float(in_meal.composition.get("Moisture_pct", 0.0)) if in_meal else 0.0
+        m_h2o_evap = m_fuel * (fuel_moisture_pct / 100.0) + m_meal * (meal_moisture_pct / 100.0)
+        q_evap_penalty_gjh = m_h2o_evap * (2.257 + 0.00205 * (885.0 - 100.0))
 
-        # 2. Coupled first-principles thermal balance relative to 280 TPH baseline
-        # Baseline reference: meal entering ~ 263.6 t/h, fuel ~ 12.0 t/h, TA ~ 128.2 t/h @ 880C, gas ~ 154.6 t/h @ 1050.8C
+        q_fuel_mw = (m_fuel * 1000.0 * lhv * comb_eff) / 3600.0
+        q_fuel_gjh = m_fuel * lhv * comb_eff - q_evap_penalty_gjh
+
+        # 2. Coupled first-principles thermal balance with dynamic capacity scaling
         m_meal_ref = 263.6
         m_fuel_ref = 12.0
         lhv_ref = 27.5
 
-        dq_fuel = (m_fuel * lhv - m_fuel_ref * lhv_ref) * comb_eff  # GJ/h
+        dq_fuel = (m_fuel * lhv - m_fuel_ref * lhv_ref) * comb_eff - q_evap_penalty_gjh  # GJ/h
         # 1 ton raw meal requires ~1.28 GJ for sensible heating + endothermic decarbonation
         dq_meal = (m_meal - m_meal_ref) * 1.28  # GJ/h
         dq_ta = ((m_ta * max(0.0, t_ta - 25.0) - 128.2 * (880.0 - 25.0)) * 0.265 * 4.184 / 1000.0) if (in_ta and m_ta > 0.0) else 0.0
         dq_kg = ((m_gas * max(0.0, t_gas - 25.0) - 96.45 * (1043.7 - 25.0)) * 0.275 * 4.184 / 1000.0) if (in_gas and m_gas > 0.0) else 0.0
 
         dq_net = dq_fuel - dq_meal + dq_ta + dq_kg
-        c_exit = 0.52  # Effective heat capacity rate GJ/(h*C)
+        c_exit = max(0.20, 0.52 * (max(50.0, m_meal) / m_meal_ref))  # Effective heat capacity rate GJ/(h*C)
 
         t_calc_target = 885.0 + (dq_net / c_exit)
         t_calc_target = max(650.0, min(1150.0, t_calc_target))
@@ -111,18 +115,18 @@ class CalcinerReactor(BlockBase):
         m_co2_released = m_caco3_reacted * 0.4397
         q_calc_gjh = m_caco3_reacted * 1.782
 
-        # 4. Flue gas from fuel combustion (fuel mass incorporated) + kiln riser gas + tertiary air + calcination CO2
+        # 4. Flue gas from fuel combustion + evaporated water + kiln riser gas + tertiary air + calcination CO2
         ash_pct = in_fuel.composition.get("ash_pct", 1.0) / 100.0 if in_fuel else 0.01
         m_fuel_gas = m_fuel * (1.0 - ash_pct)
-        m_gas_out = m_gas + m_ta + m_fuel_gas + m_co2_released
-        m_meal_out = max(0.0, m_meal - m_co2_released + (m_fuel * ash_pct))
+        m_gas_out = m_gas + m_ta + m_fuel_gas + m_co2_released + m_meal * (meal_moisture_pct / 100.0)
+        m_meal_out = max(0.0, m_meal * (1.0 - meal_moisture_pct / 100.0) - m_co2_released + (m_fuel * ash_pct))
 
-        q_loss_gjh = loss_pct * (q_fuel_gjh + 350.0)
+        q_loss_gjh = loss_pct * (max(0.0, q_fuel_gjh) + 350.0)
 
-        # 5. Excess air & Coupled Combustion Gas Analysis (O2, CO)
+        # 5. Excess air & Coupled Combustion Gas Analysis (O2, CO) with steam dilution
         in_gas_o2 = in_gas.composition.get("O2_pct", 2.32) if in_gas and in_gas.composition else 2.32
         m_o2_in = (m_ta * 0.232) + (m_gas * (in_gas_o2 / 100.0) * (32.0 / 28.9))
-        m_o2_stoich = m_fuel * 2.45
+        m_o2_stoich = m_fuel * 2.45 * (lhv / 27.5)
         excess_o2 = m_o2_in - m_o2_stoich
         lambda_calc = m_o2_in / max(0.1, m_o2_stoich) if m_fuel > 0.1 else 1.20
         if lambda_calc >= 1.0:
@@ -145,6 +149,7 @@ class CalcinerReactor(BlockBase):
         # Update outlet streams
         out_gas = outlet_streams.get("out_gas")
         if out_gas:
+            h2o_gas_pct = round(max(3.0, min(28.0, 7.2 + (m_h2o_evap / max(1.0, m_gas_out)) * 100.0 * (28.9 / 18.015))), 2)
             out_gas.update_state(
                 mass_flow_tph=m_gas_out,
                 temperature_c=t_calc_target,
@@ -153,8 +158,8 @@ class CalcinerReactor(BlockBase):
                     "CO2_pct": round(28.0 + (m_co2_released / max(1.0, m_gas_out)) * 40.0, 1),
                     "O2_pct": round(calc_o2, 2),
                     "CO_pct": round(calc_co, 3),
-                    "N2_pct": round(68.0 - calc_o2, 1),
-                    "H2O_pct": 7.2,
+                    "N2_pct": round(max(40.0, 68.0 - calc_o2 - (h2o_gas_pct - 7.2)), 1),
+                    "H2O_pct": h2o_gas_pct,
                 },
             )
 
