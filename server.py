@@ -361,7 +361,13 @@ class SimulatorRestHttpHandler(SimpleHTTPRequestHandler):
         elif parsed.path.startswith("/api/flowsheet/builder/template/"):
             tpl_id = parsed.path.split("/")[-1]
             try:
-                tpl_data = modular_manager.get_template_data(tpl_id)
+                tpl_data = modular_manager.load_template_as_active(tpl_id)
+                # Purge any previous modular tags because templates do NOT have OPC tags
+                if active_opc_server and active_event_loop:
+                    asyncio.run_coroutine_threadsafe(
+                        active_opc_server.sync_modular_tags([]),
+                        active_event_loop
+                    )
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
                 self._send_cors_headers()
@@ -388,15 +394,15 @@ class SimulatorRestHttpHandler(SimpleHTTPRequestHandler):
             files_list = modular_manager.list_saved_files()
             self.wfile.write(json.dumps(files_list).encode("utf-8"))
         elif parsed.path.startswith("/api/flowsheet/builder/load/"):
-            fname = parsed.path.split("/")[-1]
+            fname = parsed.path.split("/api/flowsheet/builder/load/")[1]
             try:
                 loaded = modular_manager.load_from_file(fname)
                 if active_opc_server and active_event_loop:
-                    for t in modular_manager.get_opc_tags():
-                        try:
-                            asyncio.run_coroutine_threadsafe(active_opc_server.register_node(t), active_event_loop)
-                        except Exception as tag_err:
-                            logger.debug(f"OPC tag dynamic registration error: {tag_err}")
+                    opc_tags = modular_manager.get_opc_tags()
+                    asyncio.run_coroutine_threadsafe(
+                        active_opc_server.sync_modular_tags(opc_tags),
+                        active_event_loop
+                    )
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
                 self._send_cors_headers()
@@ -736,14 +742,13 @@ class SimulatorRestHttpHandler(SimpleHTTPRequestHandler):
             try:
                 body = json.loads(post_body.decode("utf-8"))
                 deploy_res = modular_manager.load_graph_data(body)
-                # Dynamically register generated OPC UA tags if server is running
+                # Synchronize OPC UA tags for active flowsheet
                 if active_opc_server and active_event_loop:
                     opc_tags = modular_manager.get_opc_tags()
-                    for t in opc_tags:
-                        try:
-                            asyncio.run_coroutine_threadsafe(active_opc_server.register_node(t), active_event_loop)
-                        except Exception as tag_err:
-                            logger.debug(f"OPC tag dynamic registration error: {tag_err}")
+                    asyncio.run_coroutine_threadsafe(
+                        active_opc_server.sync_modular_tags(opc_tags),
+                        active_event_loop
+                    )
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
                 self._send_cors_headers()
@@ -777,6 +782,13 @@ class SimulatorRestHttpHandler(SimpleHTTPRequestHandler):
                 body = json.loads(post_body.decode("utf-8"))
                 filename = body.get("filename") or body.get("name") or "custom_flowsheet"
                 res = modular_manager.save_to_file(filename, body.get("flowsheet") or body.get("graph") or body)
+                # When saved as a worksheet, immediately enable and register its OPC UA tags
+                if active_opc_server and active_event_loop:
+                    opc_tags = modular_manager.get_opc_tags()
+                    asyncio.run_coroutine_threadsafe(
+                        active_opc_server.sync_modular_tags(opc_tags),
+                        active_event_loop
+                    )
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
                 self._send_cors_headers()
@@ -792,17 +804,25 @@ class SimulatorRestHttpHandler(SimpleHTTPRequestHandler):
             try:
                 body = json.loads(post_body.decode("utf-8"))
                 filename = body.get("filename")
-                if filename and not filename.endswith(".json"):
-                    filename += ".json"
-                fpath = os.path.join(modular_manager.storage_dir, filename) if filename else None
-                if fpath and os.path.exists(fpath):
-                    os.remove(fpath)
+                del_res = modular_manager.delete_worksheet_file(filename)
+                # When worksheet is deleted, automatically delete/purge its associated OPC UA tags
+                if active_opc_server and active_event_loop:
+                    opc_tags = modular_manager.get_opc_tags()
+                    asyncio.run_coroutine_threadsafe(
+                        active_opc_server.sync_modular_tags(opc_tags),
+                        active_event_loop
+                    )
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
                 self._send_cors_headers()
                 self.end_headers()
-                self.wfile.write(json.dumps({"status": "success", "message": f"Deleted {filename}"}).encode("utf-8"))
+                self.wfile.write(json.dumps({"status": "success", "message": f"Deleted {filename} and removed associated OPC tags"}).encode("utf-8"))
             except Exception as e:
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json")
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "error", "message": str(e)}).encode("utf-8"))
                 self.send_response(400)
                 self.send_header("Content-Type", "application/json")
                 self._send_cors_headers()

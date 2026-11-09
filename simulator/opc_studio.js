@@ -423,27 +423,29 @@
     const rows = tagsData.map(t => {
       const val = (t.live_value !== undefined && t.live_value !== null) ? t.live_value : (t.value !== undefined ? t.value : t.default);
       return [
-        `"${t.tag_id || ''}"`,
-        `"${t.name || ''}"`,
-        `"${t.hmi_tag || ''}"`,
-        `"${t.category || ''}"`,
-        `"${t.source || ''}"`,
+        `"${(t.tag_id || '').replace(/"/g, '""')}"`,
+        `"${(t.name || '').replace(/"/g, '""')}"`,
+        `"${(t.hmi_tag || '').replace(/"/g, '""')}"`,
+        `"${(t.category || '').replace(/"/g, '""')}"`,
+        `"${(t.source || '').replace(/"/g, '""')}"`,
         `"${val ?? ''}"`,
-        `"${t.unit || ''}"`,
-        `"${t.opc_node_id || t.node_id || ''}"`,
-        `"${t.opc_direction || t.access || ''}"`,
+        `"${(t.unit || '').replace(/"/g, '""')}"`,
+        `"${(t.opc_node_id || t.node_id || '').replace(/"/g, '""')}"`,
+        `"${(t.opc_direction || t.access || '').replace(/"/g, '""')}"`,
         `"${t.min ?? ''}"`,
         `"${t.max ?? ''}"`
       ].join(',');
     });
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows].join('\n');
-    const encodedUri = encodeURI(csvContent);
+    const csvContent = [headers.join(','), ...rows].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
+    link.href = url;
     link.setAttribute('download', `prosim_opc_tags_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
   function exportTagsJson() {

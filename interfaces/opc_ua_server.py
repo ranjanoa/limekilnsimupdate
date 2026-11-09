@@ -11,6 +11,7 @@ import logging
 import os
 import sys
 import json
+from typing import List, Dict, Any, Optional, Set
 from asyncua import Server, ua
 
 # Add parent directory to path to import engine
@@ -33,6 +34,7 @@ class CementOpcUaServer:
         self.engine = engine if engine else FirstPrinciplesEngine(config_path=self.config_path)
         self.modular_manager = modular_manager
         self.server = Server()
+        self.baseline_tag_ids = set()
         
         opc_cfg = self.cfg.get("opc_ua", {})
         self.endpoint = opc_cfg.get("server_endpoint", "opc.tcp://0.0.0.0:4841/freeopcua/server/")
@@ -77,12 +79,14 @@ class CementOpcUaServer:
         tag_dict = self.cfg.get("tag_dictionary", [])
         if tag_dict:
             for tag in tag_dict:
+                self.baseline_tag_ids.add(tag["tag_id"])
                 await self.register_node(tag)
         else:
             # Fallback to legacy specs if tag_dictionary missing
             feedback_specs = self.cfg.get("opc_ua", {}).get("nodes", {}).get("feedback", [])
             for spec in feedback_specs:
                 name = spec["name"]
+                self.baseline_tag_ids.add(name)
                 node = await self.feedback_folder.add_variable(ua.NodeId(name, idx), name, 0.0, ua.VariantType.Float)
                 await node.set_read_only()
                 self.feedback_nodes[name] = node
@@ -90,6 +94,7 @@ class CementOpcUaServer:
             command_specs = self.cfg.get("opc_ua", {}).get("nodes", {}).get("commands", [])
             for spec in command_specs:
                 name = spec["name"]
+                self.baseline_tag_ids.add(name)
                 default_val = spec.get("default", 0.0)
                 var_type = ua.VariantType.Boolean if spec.get("type") == "Boolean" else ua.VariantType.Float
                 node = await self.commands_folder.add_variable(ua.NodeId(name, idx), name, default_val, var_type)
@@ -97,12 +102,46 @@ class CementOpcUaServer:
                 self.command_nodes[name] = node
                 self.last_command_values[name] = default_val
 
-        # 2. Register modular flowsheet equipment tags if modular manager is active
+        # 2. Register modular flowsheet equipment tags if modular manager is active and in worksheet mode
         if self.modular_manager and hasattr(self.modular_manager, "get_opc_tags"):
             for m_tag in self.modular_manager.get_opc_tags():
                 await self.register_node(m_tag)
 
         logger.info(f"OPC UA Address Space initialized: {len(self.feedback_nodes)} Feedback nodes, {len(self.command_nodes)} Command nodes.")
+
+    async def deregister_node(self, tag_id: str):
+        """Deregisters and deletes a dynamic node from the OPC UA address space."""
+        if tag_id in getattr(self, "baseline_tag_ids", set()):
+            return  # Protect baseline plant configuration tags
+        node = self.feedback_nodes.pop(tag_id, None) or self.command_nodes.pop(tag_id, None)
+        if node:
+            try:
+                await self.server.delete_nodes([node], recursive=False)
+                logger.info(f"🗑️ Deleted OPC UA node from address space: {tag_id}")
+            except Exception as ex:
+                logger.debug(f"OPC node deletion notice ({tag_id}): {ex}")
+        self.last_command_values.pop(tag_id, None)
+        self.current_commands.pop(tag_id, None)
+
+    async def sync_modular_tags(self, current_tags: List[Dict[str, Any]]):
+        """Synchronizes dynamic worksheet tags: registers new ones and deletes removed ones."""
+        active_ids = {t["tag_id"] for t in current_tags if "tag_id" in t}
+        baseline = getattr(self, "baseline_tag_ids", set())
+
+        # 1. Deregister any modular nodes that are no longer active
+        for tag_id in list(self.feedback_nodes.keys()):
+            if tag_id not in baseline and tag_id not in active_ids:
+                await self.deregister_node(tag_id)
+
+        for tag_id in list(self.command_nodes.keys()):
+            if tag_id not in baseline and tag_id not in active_ids:
+                await self.deregister_node(tag_id)
+
+        # 2. Register new tags
+        for t in current_tags:
+            tag_id = t.get("tag_id")
+            if tag_id and tag_id not in self.feedback_nodes and tag_id not in self.command_nodes:
+                await self.register_node(t)
 
     async def register_node(self, tag):
         """Dynamically registers a newly added tag in the OPC UA address space."""
@@ -295,15 +334,27 @@ class CementOpcUaServer:
                     # Collect modular block telemetry & measurements
                     modular_telemetry = {}
                     if self.modular_manager and hasattr(self.modular_manager, "get_opc_tags"):
-                        for m_tag in self.modular_manager.get_opc_tags():
+                        m_tags = self.modular_manager.get_opc_tags()
+                        active_m_ids = set()
+                        for m_tag in m_tags:
                             t_id = m_tag.get("tag_id")
                             if t_id:
+                                active_m_ids.add(t_id)
                                 modular_telemetry[t_id] = m_tag.get("live_value", m_tag.get("value", 0.0))
                                 if t_id not in self.feedback_nodes and t_id not in self.command_nodes:
                                     try:
                                         await self.register_node(m_tag)
                                     except Exception as reg_err:
                                         logger.debug(f"Dynamic tag reg {t_id}: {reg_err}")
+
+                        # Automatically purge any modular nodes that were deleted or deactivated
+                        baseline = getattr(self, "baseline_tag_ids", set())
+                        for tag_id in list(self.feedback_nodes.keys()):
+                            if tag_id not in baseline and tag_id not in active_m_ids:
+                                await self.deregister_node(tag_id)
+                        for tag_id in list(self.command_nodes.keys()):
+                            if tag_id not in baseline and tag_id not in active_m_ids:
+                                await self.deregister_node(tag_id)
 
                     for node_name, node in self.feedback_nodes.items():
                         val_to_write = None

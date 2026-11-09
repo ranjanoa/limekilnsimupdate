@@ -169,17 +169,20 @@ class TestModularEngine(unittest.TestCase):
         self.assertIn("audit", act)
         self.assertGreater(len(act["stream_table"]), 10)
 
-        # Auto-generated OPC tags
+        # Templates do not generate OPC tags until saved as worksheet
+        opc_tags_initial = mgr.get_opc_tags()
+        self.assertEqual(len(opc_tags_initial), 0)
+
+        # Save as worksheet enables auto-generated OPC tags
+        save_res = mgr.save_to_file("test_plant_save.json", act["flowsheet"])
+        self.assertEqual(save_res["status"], "success")
+
         opc_tags = mgr.get_opc_tags()
         self.assertGreater(len(opc_tags), 20)
         for tag in opc_tags:
             self.assertIn("tag_id", tag)
             self.assertIn("node_id", tag)
             self.assertIn("access", tag)
-
-        # Save and list
-        save_res = mgr.save_to_file("test_plant_save.json", act["flowsheet"])
-        self.assertEqual(save_res["status"], "success")
 
         saved_files = mgr.list_saved_files()
         self.assertTrue(any(f["filename"] == "test_plant_save.json" for f in saved_files))
@@ -406,6 +409,7 @@ class TestModularEngine(unittest.TestCase):
         mgr = ModularEngineManager()
         tpl = mgr.get_template_data("single_cyclone_demo")
         mgr.load_graph_data(tpl)
+        mgr.is_saved_worksheet = True  # Enable worksheet mode for OPC tags test
 
         # Verify old block ID exists in graph and OPC tags
         self.assertIn("FEED_01", mgr.active_graph.blocks)

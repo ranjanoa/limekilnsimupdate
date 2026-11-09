@@ -41,11 +41,13 @@ class ModularEngineManager:
 
         # Default to Kiln 3 Pyroprocessing Plant template
         self.active_graph: FlowsheetGraph = load_template_graph("kiln_3_pyroprocess")
+        self.is_saved_worksheet: bool = False
+        self.active_worksheet_filename: Optional[str] = None
         self.solver: FlowsheetSolver = FlowsheetSolver(self.active_graph)
         self.live_parameters: Dict[str, Dict[str, Any]] = {}
         # Solve initial steady state
         self.solver.solve_steady_state()
-        logger.info(f"Initialized ModularEngineManager with default graph '{self.active_graph.name}'")
+        logger.info(f"Initialized ModularEngineManager with default template '{self.active_graph.name}' (Worksheet OPC tags disabled until saved)")
 
     def get_component_catalog(self) -> List[Dict[str, Any]]:
         """Returns component palette schema catalog."""
@@ -61,6 +63,14 @@ class ModularEngineManager:
             raise KeyError(f"Template '{template_id}' not found.")
         graph = load_template_graph(template_id)
         return graph.to_dict()
+
+    def load_template_as_active(self, template_id: str) -> Dict[str, Any]:
+        """Loads a template into the active graph with OPC tags disabled."""
+        tpl_data = self.get_template_data(template_id)
+        res = self.load_graph_data(tpl_data)
+        self.is_saved_worksheet = False
+        self.active_worksheet_filename = None
+        return res
 
     def load_graph_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """Replaces active flowsheet graph with user graph data."""
@@ -189,15 +199,21 @@ class ModularEngineManager:
         }
 
     def save_to_file(self, filename: str, data: Dict[str, Any]) -> Dict[str, Any]:
-        """Saves a flowsheet JSON into the flowsheet storage directory."""
+        """Saves a flowsheet JSON into the flowsheet storage directory and enables worksheet OPC tags."""
         if not filename.endswith(".json"):
             filename += ".json"
         safe_name = "".join(c for c in filename if c.isalnum() or c in ("-", "_", ".")).strip()
         filepath = os.path.join(self.storage_dir, safe_name)
         with open(filepath, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
-        logger.info(f"Saved custom flowsheet to {filepath}")
-        return {"status": "success", "filename": safe_name, "path": filepath}
+        logger.info(f"Saved worksheet to {filepath}")
+
+        # Sync active graph with saved data and activate saved worksheet mode
+        self.load_graph_data(data)
+        self.is_saved_worksheet = True
+        self.active_worksheet_filename = safe_name
+
+        return {"status": "success", "filename": safe_name, "path": filepath, "is_worksheet": True}
 
     def list_saved_files(self) -> List[Dict[str, Any]]:
         """Lists all user-saved flowsheet JSON files."""
@@ -221,18 +237,44 @@ class ModularEngineManager:
         return files
 
     def load_from_file(self, filename: str) -> Dict[str, Any]:
-        """Loads a saved flowsheet JSON file into the active engine."""
+        """Loads a saved worksheet JSON file into the active engine and enables its OPC tags."""
         if not filename.endswith(".json"):
             filename += ".json"
-        filepath = os.path.join(self.storage_dir, filename)
+        safe_name = "".join(c for c in filename if c.isalnum() or c in ("-", "_", ".")).strip()
+        filepath = os.path.join(self.storage_dir, safe_name)
         if not os.path.exists(filepath):
-            raise FileNotFoundError(f"File '{filename}' not found.")
+            raise FileNotFoundError(f"File '{safe_name}' not found.")
         with open(filepath, "r", encoding="utf-8") as f:
             data = json.load(f)
-        return self.load_graph_data(data)
+        res = self.load_graph_data(data)
+        self.is_saved_worksheet = True
+        self.active_worksheet_filename = safe_name
+        return res
+
+    def delete_worksheet_file(self, filename: str) -> Dict[str, Any]:
+        """Deletes a saved worksheet file and automatically disables/clears its tags if active."""
+        if not filename.endswith(".json"):
+            filename += ".json"
+        safe_name = "".join(c for c in filename if c.isalnum() or c in ("-", "_", ".")).strip()
+        filepath = os.path.join(self.storage_dir, safe_name)
+        was_active = (self.active_worksheet_filename == safe_name)
+        deleted = False
+        if os.path.exists(filepath):
+            os.remove(filepath)
+            deleted = True
+            logger.info(f"Deleted worksheet file: {filepath} (was_active={was_active})")
+        if was_active:
+            self.is_saved_worksheet = False
+            self.active_worksheet_filename = None
+        return {"status": "success", "deleted": deleted, "was_active": was_active, "filename": safe_name}
 
     def get_opc_tags(self) -> List[Dict[str, Any]]:
-        """Collects all auto-generated OPC UA tags across all blocks in the active flowsheet."""
+        """
+        Collects all auto-generated OPC UA tags across all blocks in the active flowsheet.
+        Only saved worksheets have OPC tags enabled; templates do NOT generate OPC tags.
+        """
+        if not getattr(self, "is_saved_worksheet", False):
+            return []
         tags = []
         for b in self.active_graph.blocks.values():
             tags.extend(b.get_opc_tags())

@@ -88,6 +88,7 @@ function initApp() {
   const btnClearSearch = document.getElementById('btnClearSearch');
   const tagGridTableBody = document.getElementById('tagGridTableBody');
 
+  const btnExportCsv = document.getElementById('btnExportCsv');
   const btnTestOpc = document.getElementById('btnTestOpc');
   const btnSetAllLocal = document.getElementById('btnSetAllLocal');
   const btnSetAllOpc = document.getElementById('btnSetAllOpc');
@@ -588,7 +589,42 @@ function initApp() {
     }
   }
 
+  function exportTagsCsv() {
+    if (!tagsData || tagsData.length === 0) {
+      alert("No tags available to export.");
+      return;
+    }
+    const headers = ['Tag_ID', 'Name', 'HMI_Tag', 'Category', 'Control_Source', 'Live_Value', 'Unit', 'OPC_Node_ID', 'Direction', 'Min', 'Max'];
+    const rows = tagsData.map(t => {
+      const val = (t.live_value !== undefined && t.live_value !== null) ? t.live_value : (t.value !== undefined ? t.value : t.default);
+      return [
+        `"${(t.tag_id || '').replace(/"/g, '""')}"`,
+        `"${(t.name || '').replace(/"/g, '""')}"`,
+        `"${(t.hmi_tag || '').replace(/"/g, '""')}"`,
+        `"${(t.category || '').replace(/"/g, '""')}"`,
+        `"${(t.source || '').replace(/"/g, '""')}"`,
+        `"${val ?? ''}"`,
+        `"${(t.unit || '').replace(/"/g, '""')}"`,
+        `"${(t.opc_node_id || t.node_id || '').replace(/"/g, '""')}"`,
+        `"${(t.opc_direction || t.access || '').replace(/"/g, '""')}"`,
+        `"${t.min ?? ''}"`,
+        `"${t.max ?? ''}"`
+      ].join(',');
+    });
+    const csvContent = [headers.join(','), ...rows].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `prosim_opc_tags_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
   // Tag Studio Event Wiring
+  if (btnExportCsv) btnExportCsv.addEventListener('click', exportTagsCsv);
   if (btnTagStudio) btnTagStudio.addEventListener('click', openTagStudio);
   if (btnCloseTagStudio) btnCloseTagStudio.addEventListener('click', closeTagStudio);
   if (btnCloseTagStudioFooter) btnCloseTagStudioFooter.addEventListener('click', closeTagStudio);

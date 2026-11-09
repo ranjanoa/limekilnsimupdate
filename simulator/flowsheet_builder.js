@@ -700,8 +700,11 @@
           } catch (e) {}
 
           const dispName = targetGraph.name || data.name || fs.name;
-          showToast(`Loaded flowsheet '${dispName}' from server!`, 'success');
+          showToast(`Loaded worksheet '${dispName}' from server! Enabled component OPC tags.`, 'success');
           renderFlowsheetsLibrary();
+          if (typeof window.refreshOpcStudio === 'function') {
+            window.refreshOpcStudio();
+          }
           setTimeout(fitGraphToView, 50);
         } else {
           showToast(`Failed loading flowsheet: HTTP ${res.status}`, 'error');
@@ -743,8 +746,11 @@
           body: JSON.stringify({ filename: fs.filename })
         });
       }
-      showToast(`Deleted flowsheet '${fs.name}'`, 'info');
+      showToast(`Deleted worksheet '${fs.name}' and removed associated OPC tags!`, 'info');
       await renderFlowsheetsLibrary();
+      if (typeof window.refreshOpcStudio === 'function') {
+        window.refreshOpcStudio();
+      }
     } catch (err) {
       showToast(`Delete failed: ${err.message}`, 'error');
     }
@@ -1234,7 +1240,10 @@
             : data;
         loadGraph(targetGraph);
         const name = targetGraph.name || data.name || templateId;
-        showToast(`Template '${name}' loaded successfully!`, 'success');
+        showToast(`Template '${name}' loaded (Template mode: OPC tags inactive until saved as worksheet).`, 'info');
+        if (typeof window.refreshOpcStudio === 'function') {
+          window.refreshOpcStudio();
+        }
         setTimeout(fitGraphToView, 50);
       }
     } catch (err) {
@@ -3946,7 +3955,10 @@
         body: JSON.stringify({ filename: safeId, flowsheet: flowsheetData }),
       });
       if (res.ok) {
-        showToast(`Saved flowsheet '${currentName}' in place! All block coordinates preserved.`, 'success');
+        showToast(`Saved worksheet '${currentName}' in place! Enabled component OPC tags.`, 'success');
+        if (typeof window.refreshOpcStudio === 'function') {
+          window.refreshOpcStudio();
+        }
       } else {
         showToast(`Saved flowsheet '${currentName}' locally!`, 'success');
       }
@@ -4037,7 +4049,10 @@
         body: JSON.stringify({ filename: newId, flowsheet: flowsheetData }),
       });
       if (res.ok) {
-        showToast(`Saved as new flowsheet '${newName}'!`, 'success');
+        showToast(`Saved as new worksheet '${newName}'! Enabled component OPC tags.`, 'success');
+        if (typeof window.refreshOpcStudio === 'function') {
+          window.refreshOpcStudio();
+        }
       } else {
         showToast(`Saved '${newName}' locally!`, 'success');
       }
